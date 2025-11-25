@@ -12,22 +12,14 @@ from core.vector_store import VectorStore
 from core.query_engine import QueryEngine
 
 
-# Default categories
+# Categories are now loaded from data/categories.json
+# This provides a fallback for when the file doesn't exist
 DEFAULT_CATEGORIES = {
     "weapons": "https://escapefromtarkov.fandom.com/wiki/Weapons",
     "ammunition": "https://escapefromtarkov.fandom.com/wiki/Ammunition",
     "armor": "https://escapefromtarkov.fandom.com/wiki/Armor_vests",
     "quests": "https://escapefromtarkov.fandom.com/wiki/Quests",
     "maps": "https://escapefromtarkov.fandom.com/wiki/Maps",
-    # Major map pages
-    "customs": "https://escapefromtarkov.fandom.com/wiki/Customs",
-    "shoreline": "https://escapefromtarkov.fandom.com/wiki/Shoreline",
-    "woods": "https://escapefromtarkov.fandom.com/wiki/Woods",
-    "factory": "https://escapefromtarkov.fandom.com/wiki/Factory",
-    "interchange": "https://escapefromtarkov.fandom.com/wiki/Interchange",
-    "reserve": "https://escapefromtarkov.fandom.com/wiki/Reserve",
-    "lighthouse": "https://escapefromtarkov.fandom.com/wiki/Lighthouse",
-    "streets": "https://escapefromtarkov.fandom.com/wiki/Streets_of_Tarkov",
     "locations": "https://escapefromtarkov.fandom.com/wiki/Locations",
 }
 
@@ -110,9 +102,15 @@ class TarkBotCLI:
 
     def list_categories(self):
         """List available categories"""
+        from core.scraper import TarkovWikiScraper
+
+        scraper = TarkovWikiScraper()
+
         click.echo("Available categories:")
-        for name, url in DEFAULT_CATEGORIES.items():
-            click.echo(f"  {name}: {url}")
+        for name, config in scraper.categories_data.items():
+            method = config.get("method", "unknown")
+            url = config.get("url", "unknown")
+            click.echo(f"  {name} ({method}): {url}")
 
     def get_stats(self):
         """Show vector store statistics"""
@@ -148,20 +146,42 @@ def category():
 @category.command("add")
 @click.option("--name", required=True, help="Category name")
 @click.option("--url", required=True, help="Category URL")
-def category_add(name, url):
+@click.option(
+    "--method",
+    default="general_extraction",
+    type=click.Choice(["general_extraction", "table_extraction", "map_extraction"]),
+    help="Scraping method (default: general_extraction)",
+)
+def category_add(name, url, method):
     """Add a new category to scrape"""
+    # Add to DEFAULT_CATEGORIES
+    DEFAULT_CATEGORIES[name] = url
+
+    # Configure scraper for this category
+    from core.scraper import TarkovWikiScraper
+
+    scraper = TarkovWikiScraper()
+    scraper.add_category(name, url, method, f"Custom category: {name}")
+
     click.echo(f"Added category: {name} -> {url}")
-    # In a real implementation, this would save to a config file
-    click.echo("Note: This is a placeholder. Categories are currently hardcoded.")
+    click.echo(f"Scraping method: {method}")
+    click.echo("Category added successfully. You can now scrape it with:")
+    click.echo(f"  uv run main.py data scrape --category {name}")
 
 
 @category.command("remove")
 @click.option("--name", required=True, help="Category name to remove")
 def category_remove(name):
     """Remove a category"""
-    click.echo(f"Removed category: {name}")
-    # In a real implementation, this would remove from config and clean up data
-    click.echo("Note: This is a placeholder. Categories are currently hardcoded.")
+    from core.scraper import TarkovWikiScraper
+
+    scraper = TarkovWikiScraper()
+
+    if scraper.remove_category(name):
+        click.echo(f"Removed category: {name}")
+        click.echo("Category removed from configuration.")
+    else:
+        click.echo(f"Category '{name}' not found.")
 
 
 @category.command("list")
@@ -198,10 +218,13 @@ def data_scrape(category, scrape_all, url):
                     scraped_categories.add(category_name)
 
         # Categories to scrape
+        from core.scraper import TarkovWikiScraper
+
+        scraper = TarkovWikiScraper()
         unscraped_categories = []
-        for cat_name, cat_url in DEFAULT_CATEGORIES.items():
+        for cat_name, cat_config in scraper.categories_data.items():
             if cat_name not in scraped_categories:
-                unscraped_categories.append((cat_name, cat_url))
+                unscraped_categories.append((cat_name, cat_config["url"]))
 
         if not unscraped_categories:
             click.echo("All categories have already been scraped!")
@@ -275,11 +298,16 @@ def data_scrape(category, scrape_all, url):
             return
 
         if not url:
-            if category not in DEFAULT_CATEGORIES:
+            # Get URL from scraper categories
+            from core.scraper import TarkovWikiScraper
+
+            scraper = TarkovWikiScraper()
+            config = scraper.get_category_config(category)
+            if "url" not in config:
                 click.echo(f"Unknown category: {category}")
                 click.echo("Use --url to specify a custom category URL")
                 return
-            url = DEFAULT_CATEGORIES[category]
+            url = config["url"]
 
         bot.scrape_category(category, url)
 
@@ -311,7 +339,11 @@ def data_status():
     click.echo("Category Scraping Status:")
     click.echo("=" * 40)
 
-    all_categories = list(DEFAULT_CATEGORIES.keys())
+    # Get all categories from scraper
+    from core.scraper import TarkovWikiScraper
+
+    scraper = TarkovWikiScraper()
+    all_categories = list(scraper.categories_data.keys())
     all_categories.sort()
 
     for category in all_categories:
@@ -321,15 +353,19 @@ def data_status():
             if category in scraped_categories
             else ""
         )
-        click.echo(f"  {category:<12} {status} {count}")
+        click.echo(f"  {category:<14} {status} {count}")
 
     scraped_count = len(scraped_categories)
-    total_count = len(DEFAULT_CATEGORIES)
+    total_count = len(scraper.categories_data)
 
     click.echo(f"\nSummary: {scraped_count}/{total_count} categories scraped")
+    click.echo("\nNote: Categories can be added dynamically with:")
+    click.echo(
+        "  uv run main.py category add --name <name> --url <url> --method <method>"
+    )
     if scraped_count < total_count:
         click.echo(
-            f"Run 'uv run main.py data scrape-all' to scrape remaining categories"
+            f"Run 'uv run main.py data scrape --all' to scrape remaining categories"
         )
 
     # Check which categories have been scraped

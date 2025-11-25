@@ -28,9 +28,151 @@ class TarkovWikiScraper:
 
     BASE_URL = "https://escapefromtarkov.fandom.com"
 
+    CATEGORIES_FILE = "data/categories.json"
+
     def __init__(self, cache_dir: str = "data/cache"):
         self.cache_dir = cache_dir
         os.makedirs(cache_dir, exist_ok=True)
+        self.categories_data = self.load_categories()
+
+    def load_categories(self):
+        """Load category configurations from JSON file"""
+        try:
+            with open(self.CATEGORIES_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                return data.get("categories", {})
+        except (FileNotFoundError, json.JSONDecodeError):
+            # Return default categories if file doesn't exist
+            return self.get_default_categories()
+
+    def save_categories(self):
+        """Save category configurations to JSON file"""
+        try:
+            with open(self.CATEGORIES_FILE, "w", encoding="utf-8") as f:
+                json.dump(
+                    {"categories": self.categories_data},
+                    f,
+                    indent=2,
+                    ensure_ascii=False,
+                )
+        except Exception as e:
+            print(f"Error saving categories: {e}")
+
+    def get_default_categories(self):
+        """Get default category configurations"""
+        return {
+            "weapons": {
+                "url": "https://escapefromtarkov.fandom.com/wiki/Weapons",
+                "method": "table_extraction",
+                "description": "Extract weapon data from wiki tables",
+            },
+            "ammunition": {
+                "url": "https://escapefromtarkov.fandom.com/wiki/Ammunition",
+                "method": "general_extraction",
+                "description": "Ammunition information",
+            },
+            "armor": {
+                "url": "https://escapefromtarkov.fandom.com/wiki/Armor_vests",
+                "method": "general_extraction",
+                "description": "Armor and protection information",
+            },
+            "quests": {
+                "url": "https://escapefromtarkov.fandom.com/wiki/Quests",
+                "method": "general_extraction",
+                "description": "Quest and mission information",
+            },
+            "maps": {
+                "url": "https://escapefromtarkov.fandom.com/wiki/Maps",
+                "method": "map_extraction",
+                "description": "Map overview information",
+            },
+            "locations": {
+                "url": "https://escapefromtarkov.fandom.com/wiki/Locations",
+                "method": "map_extraction",
+                "description": "Location information",
+            },
+        }
+
+    def add_category(self, name: str, url: str, method: str, description: str = ""):
+        """Add a new category"""
+        self.categories_data[name] = {
+            "url": url,
+            "method": method,
+            "description": description or f"Custom category: {name}",
+        }
+        self.save_categories()
+
+    def remove_category(self, name: str):
+        """Remove a category"""
+        if name in self.categories_data:
+            del self.categories_data[name]
+            self.save_categories()
+            return True
+        return False
+
+    def get_category_config(self, category_name: str):
+        """Get configuration for a category"""
+        config = self.categories_data.get(category_name)
+        if config:
+            return config
+
+        # Fallback to default
+        return {
+            "method": "general_extraction",
+            "description": "General wiki page extraction",
+        }
+
+    CATEGORY_CONFIGS = {
+        "weapons": {
+            "method": "table_extraction",
+            "description": "Extract weapon data from wiki tables",
+        },
+        "maps": {
+            "method": "map_extraction",
+            "description": "Extract map and location information",
+        },
+        "locations": {
+            "method": "map_extraction",
+            "description": "Extract location information",
+        },
+        "customs": {
+            "method": "map_extraction",
+            "description": "Extract Customs map information",
+        },
+        "shoreline": {
+            "method": "map_extraction",
+            "description": "Extract Shoreline map information",
+        },
+        "woods": {
+            "method": "map_extraction",
+            "description": "Extract Woods map information",
+        },
+        "factory": {
+            "method": "map_extraction",
+            "description": "Extract Factory map information",
+        },
+        "interchange": {
+            "method": "map_extraction",
+            "description": "Extract Interchange map information",
+        },
+        "reserve": {
+            "method": "map_extraction",
+            "description": "Extract Reserve map information",
+        },
+        "lighthouse": {
+            "method": "map_extraction",
+            "description": "Extract Lighthouse map information",
+        },
+        "streets": {
+            "method": "map_extraction",
+            "description": "Extract Streets of Tarkov map information",
+        },
+        # Default for other categories
+        "default": {
+            "method": "general_extraction",
+            "description": "General wiki page extraction",
+        },
+    }
 
     def scrape_page(self, url: str, category: str) -> Optional[WikiPage]:
         """Scrape a single wiki page"""
@@ -113,21 +255,14 @@ class TarkovWikiScraper:
 
             soup = BeautifulSoup(response.content, "html.parser")
 
-            if category_name == "weapons":
-                # Special handling for weapons page - extract from tables
+            # Get scraping method from configuration
+            config = self.get_category_config(category_name)
+            method = config["method"]
+
+            if method == "table_extraction":
+                # Special handling for pages with weapon/ammo tables
                 pages = self._scrape_weapons_from_table(soup, category_url)
-            elif category_name in [
-                "maps",
-                "locations",
-                "customs",
-                "shoreline",
-                "woods",
-                "factory",
-                "interchange",
-                "reserve",
-                "lighthouse",
-                "streets",
-            ]:
+            elif method == "map_extraction":
                 # Special handling for map/location pages
                 pages = self._scrape_maps_and_locations(
                     soup, category_url, category_name

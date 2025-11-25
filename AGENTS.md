@@ -51,12 +51,14 @@ sentence-transformers>=5.1.2
 ## Phase 2: Data Collection & Processing
 
 ### Step 2.1: Target Wiki Pages ✅ ENHANCED
-**Choice**: Option A (Essential pages with CLI management) + Full weapon coverage + Map extracts
+**Choice**: Option A (Essential pages with CLI management) + Full weapon coverage + Map extracts + JSON-based categories
 - **176 weapons** scraped from Tarkov wiki (all available)
 - **Customs & Shoreline** extract locations with requirements
 - Ammunition, Armor, Quests, Maps, Extract locations
-- CLI commands for adding/removing categories
+- **JSON-based category management** (`data/categories.json`)
+- **Dynamic category addition** with configurable scraping methods
 - **Smart scraping**: Only scrape unscraped categories
+- **Configurable scraping methods**: general_extraction, table_extraction, map_extraction
 
 ### Step 2.2: Scraping Strategy ✅ CONFIRMED
 **Choice**: Option B (Batch scraping with caching)
@@ -147,7 +149,7 @@ sentence-transformers>=5.1.2
 python main.py "What is the best 7.62x39 ammo?"
 
 # Category management
-python main.py category add --name medical --url "https://..."
+python main.py category add --name medical --url "https://..." --method general_extraction
 python main.py category remove --name medical
 python main.py category list
 
@@ -269,14 +271,14 @@ mkdir -p core interfaces api data
 **Always use `uv run` to execute commands:**
 
 ```bash
-# Ask questions (default behavior)
+# Ask questions
 uv run main.py "What is the AK-74N?"
 
 # Or explicitly use ask command
 uv run main.py ask "What is the AK-74N?"
 
 # Category management
-uv run main.py category add --name medical --url "https://..."
+uv run main.py category add --name medical --url "https://..." --method general_extraction
 uv run main.py category remove --name medical
 uv run main.py category list
 
@@ -286,6 +288,27 @@ uv run main.py data scrape --all  # Scrape all unscraped categories
 uv run main.py data status        # Show scraping status
 uv run main.py data stats         # Show database statistics
 ```
+
+## Category Configuration
+
+**Categories are stored in `data/categories.json` and can be edited directly:**
+
+```json
+{
+  "categories": {
+    "weapons": {
+      "url": "https://escapefromtarkov.fandom.com/wiki/Weapons",
+      "method": "table_extraction",
+      "description": "Extract weapon data from wiki tables"
+    }
+  }
+}
+```
+
+**Available scraping methods:**
+- `general_extraction`: Standard wiki page content
+- `table_extraction`: Weapon/ammo tables (structured data)
+- `map_extraction`: Map pages with extracts and locations
 
 **Why use `uv run`?**
 - Automatically activates the virtual environment
