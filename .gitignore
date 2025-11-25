@@ -4,6 +4,7 @@
 
 # Data files (regenerate with scraping)
 data/
+cache/
 *.npy
 *.pkl
 

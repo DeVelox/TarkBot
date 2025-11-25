@@ -1,39 +1,24 @@
-from api.gemini_client import init_gemini, generate_response
-
-
 def format_response(data):
-    """Format item data into a natural language response using Gemini."""
+    """Format item data into a brief factual response."""
     if not data:
-        return "Sorry, I couldn't find information about that item."
+        return "Item not found."
 
     item = data["item"]
-    quests = data["quests"]
+    flea_price = data.get("flea_price", "N/A")
+    quests = data.get("quests", [])
+    hideouts = data.get("hideouts", [])
 
-    prompt = f"""
-    Format this Escape from Tarkov item information into a natural, conversational response for a player asking about the item:
+    response = f"{item['shortName']} sells for {flea_price} on flea"
 
-    Item: {item["name"]} ({item["shortName"]})
+    for quest in quests:
+        amount = quest["count"]
+        verb = "is" if amount == 1 else "are"
+        fir_note = " You need them found in raid." if quest["found_in_raid"] else ""
+        response += f". {amount} {verb} needed for {quest['quest_name']} from {quest['trader']}{fir_note}"
 
-    Pricing:
-    - Flea market average (24h): {item.get("avg24hPrice", "N/A")}
-    - Base price: {item["basePrice"]}
-    - Vendor sell prices:
-"""
+    for hideout in hideouts:
+        amount = hideout["count"]
+        verb = "is" if amount == 1 else "are"
+        response += f". {amount} {verb} needed for {hideout['hideout_name']} level {hideout['level']}"
 
-    for sell in item.get("sellFor", []):
-        prompt += f"      - {sell['source'].title()}: {sell['price']}\n"
-
-    if quests:
-        prompt += "\n    Quest requirements:\n"
-        for quest in quests:
-            fir_note = " (must be Found in Raid)" if quest["found_in_raid"] else ""
-            prompt += f"      - {quest['quest_name']} ({quest['trader']}): {quest['count']} needed{fir_note}\n"
-    else:
-        prompt += "\n    No active quest requirements found for this item.\n"
-
-    prompt += """
-    Provide a brief, direct response with no pleasantries or preludes. Format like: "Item costs X on flea, Y from vendor. N needed for quest Q from trader T (FIR if applicable)." Include only essential pricing and quest info in natural sentences, using exact numbers from the API.
-    """
-
-    model = init_gemini()
-    return generate_response(model, prompt)
+    return response
