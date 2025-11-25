@@ -44,7 +44,7 @@ def ask(question, debug):
         }
         click.echo(json.dumps(result, indent=2))
     else:
-        response = format_response(data)
+        response = format_response(data, question)
         click.echo(response)
 
 
@@ -90,7 +90,7 @@ def test(debug):
             }
             click.echo(json.dumps(result, indent=2))
         else:
-            response = format_response(data)
+            response = format_response(data, item)
             click.echo(f"Response: {response}")
 
     click.echo("\n--- Test completed ---")

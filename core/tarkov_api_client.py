@@ -28,10 +28,10 @@ def get_hideouts():
             levels {
                 level
                 itemRequirements {
-                    count
                     item {
                         id
                     }
+                    count
                 }
             }
         }
@@ -58,6 +58,7 @@ def get_tasks():
                 name
             }
             objectives {
+                type
                 ... on TaskObjectiveItem {
                     items {
                         id
@@ -65,7 +66,11 @@ def get_tasks():
                     foundInRaid
                     count
                 }
-                type
+                ... on TaskObjectiveBuildItem {
+                    item {
+                        id
+                    }
+                }
             }
         }
     }
@@ -90,13 +95,18 @@ def get_item_data(name):
                     name
                 }}
             }}
+            usedInTasks {{
+                id
+            }}
         }}
     }}'''
     data = query_graphql(query)
     items = data["data"]["items"]
     if not items:
         return None
-    item = items[0]  # Assume first match
+    # Prioritize items with usedInTasks
+    items.sort(key=lambda x: len(x.get("usedInTasks", [])), reverse=True)
+    item = items[0]
     item_id = item["id"]
 
     # Find flea price
@@ -114,9 +124,14 @@ def get_item_data(name):
     quests = []
     for task in tasks:
         for obj in task.get("objectives", []):
-            if obj.get("type") == "giveItem" and any(
-                i["id"] == item_id for i in obj.get("items", [])
-            ):
+            item_ids = []
+            if "item" in obj:
+                item_ids.append(obj["item"]["id"])
+            elif "items" in obj:
+                item_ids.extend(i["id"] for i in obj["items"])
+            if (
+                "give" in obj.get("type", "") or "build" in obj.get("type", "")
+            ) and item_id in item_ids:
                 quests.append(
                     {
                         "quest_name": task["name"],

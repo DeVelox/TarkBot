@@ -1,24 +1,22 @@
-def format_response(data):
-    """Format item data into a brief factual response."""
+import json
+from api.gemini_client import init_gemini, generate_response
+
+
+def format_response(data, query_name):
+    """Format item data into a concise factual response using Gemini."""
     if not data:
         return "Item not found."
 
-    item = data["item"]
-    flea_price = data.get("flea_price", "N/A")
-    quests = data.get("quests", [])
-    hideouts = data.get("hideouts", [])
+    # Prepare structured data
+    structured = {
+        "item_name": query_name,
+        "flea_price": data["flea_price"],
+        "quests": data.get("quests", []),
+        "hideouts": data.get("hideouts", []),
+    }
 
-    response = f"{item['shortName']} sells for {flea_price} on flea"
+    data_json = json.dumps(structured)
+    prompt = f"Format this Tarkov item data into a concise, factual response using only the provided information. Use the item_name as provided. Present it naturally but briefly: {data_json}"
 
-    for quest in quests:
-        amount = quest["count"]
-        verb = "is" if amount == 1 else "are"
-        fir_note = " You need them found in raid." if quest["found_in_raid"] else ""
-        response += f". {amount} {verb} needed for {quest['quest_name']} from {quest['trader']}{fir_note}"
-
-    for hideout in hideouts:
-        amount = hideout["count"]
-        verb = "is" if amount == 1 else "are"
-        response += f". {amount} {verb} needed for {hideout['hideout_name']} level {hideout['level']}"
-
-    return response
+    model = init_gemini()
+    return generate_response(model, prompt)
