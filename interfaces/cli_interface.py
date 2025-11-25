@@ -1,6 +1,6 @@
 import click
 import json
-from core.item_lookup import get_item_data
+from core.tarkov_api_client import get_item_data
 from core.response_formatter import format_response
 
 

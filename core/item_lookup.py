@@ -1,1 +1,0 @@
-from core.tarkov_api_client import get_item_data
