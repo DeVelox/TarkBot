@@ -2,6 +2,7 @@ import click
 import json
 from core.tarkov_api_client import get_item_data
 from core.response_formatter import format_response
+from api.gemini_client import init_gemini, extract_item_name
 
 
 @click.group()
@@ -14,9 +15,12 @@ def cli():
 @click.argument("question")
 @click.option("--debug", is_flag=True, help="Output structured JSON data")
 def ask(question, debug):
-    """Ask a question about a Tarkov item (MVP: treat as item name)."""
-    click.echo(f"Searching for: {question}")
-    data = get_item_data(question)
+    """Ask a question about a Tarkov item."""
+    click.echo(f"Query: {question}")
+    model = init_gemini()
+    item_name = extract_item_name(model, question)
+    click.echo(f"Extracted item: {item_name}")
+    data = get_item_data(item_name)
     if debug:
         if not data:
             click.echo("Item not found.")
@@ -44,7 +48,7 @@ def ask(question, debug):
         }
         click.echo(json.dumps(result, indent=2))
     else:
-        response = format_response(data, question)
+        response = format_response(data, item_name)
         click.echo(response)
 
 

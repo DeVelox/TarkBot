@@ -19,3 +19,10 @@ def generate_response(model, prompt):
     """Generate response using Gemini model."""
     response = model.generate_content(prompt)
     return response.text
+
+
+def extract_item_name(model, query):
+    """Extract item name from freeform query using Gemini."""
+    prompt = f"Extract the most likely Escape from Tarkov item name from this query: '{query}'. Return only the item name, nothing else."
+    response = model.generate_content(prompt)
+    return response.text.strip()
