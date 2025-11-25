@@ -52,7 +52,9 @@ class QueryEngine:
         query_lower = query.lower()
 
         # Simple keyword-based classification
-        if any(
+        if any(word in query_lower for word in ["loadout", "build", "setup", "gear"]):
+            return "loadout"
+        elif any(
             word in query_lower for word in ["best", "good", "recommend", "compare"]
         ):
             return "comparison"
@@ -140,8 +142,18 @@ Provide a clear, accurate answer using the provided information."""
                 else:
                     return "I don't have information about that in my knowledge base yet. Try scraping some data first."
 
-            # Create the prompt with system instructions
-            full_prompt = f"""You are a helpful Escape from Tarkov expert. Answer questions accurately using only the provided context. If you don't know something, say so.
+            # Create the prompt based on query type
+            if query_type == "loadout":
+                full_prompt = f"""You are an Escape from Tarkov expert. Based on the weapon information provided, recommend a practical loadout including attachments, optics, and ammo.
+
+Context:
+{context_text}
+
+Question: {query}
+
+Provide a concise loadout recommendation with specific items and brief reasoning. Focus only on essential information - no motivational language, practice tips, or luck wishes."""
+            else:
+                full_prompt = f"""You are a helpful Escape from Tarkov expert. Answer questions accurately using only the provided context. If you don't know something, say so.
 
 Context:
 {context_text}

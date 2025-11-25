@@ -224,6 +224,7 @@ python main.py data stats
 
 - [x] Can answer basic ammo/weapon questions
 - [x] Handles map location queries
+- [x] Provides loadout recommendations
 - [ ] Provides quest information
 - [x] CLI interface works smoothly
 - [x] Response time < 3 seconds

@@ -151,13 +151,23 @@ class TarkovWikiScraper:
                         rate_of_fire = cells[4].get_text().strip()
                         description = cells[5].get_text().strip()
 
-                        # Create content
+                        # Extract attachments first
+                        attachments = self._extract_weapon_attachments(soup, name)
+
+                        # Create content with attachments
+                        attachment_text = ""
+                        if attachments:
+                            attachment_text = (
+                                f"\n\nCompatible Attachments:\n"
+                                + "\n".join(f"- {att}" for att in attachments[:10])
+                            )  # Limit to 10
+
                         content = f"""Weapon: {name}
 Cartridge: {cartridge}
 Firing Modes: {firing_modes}
 Rate of Fire: {rate_of_fire} RPM
 
-Description: {description}"""
+Description: {description}{attachment_text}"""
 
                         # Extract metadata
                         metadata = {
@@ -165,6 +175,7 @@ Description: {description}"""
                             "firing_modes": firing_modes,
                             "rate_of_fire": rate_of_fire,
                             "type": "weapon",
+                            "attachments": attachments,
                         }
 
                         page = WikiPage(
@@ -296,6 +307,51 @@ To use this extract, navigate to the location shown on the interactive map and a
                     print(f"Error parsing map data: {e}")
 
         return pages[:20]  # Limit for testing
+
+    def _extract_weapon_attachments(self, soup, weapon_name: str) -> List[str]:
+        """Extract attachment/modification information for a weapon"""
+        attachments = []
+
+        # Find attachments table
+        tables = soup.find_all("table", {"class": "wikitable"})
+        for table in tables:
+            headers = table.find_all("th")
+            header_texts = [h.get_text().strip() for h in headers]
+            if "Attachments" in header_texts:
+                # Found attachments table
+                rows = table.find_all("tr")
+                for row in rows[1:]:  # Skip header
+                    cells = row.find_all(["td", "th"])
+                    if len(cells) >= 3:  # Images, Variants, Attachments
+                        attachment_text = cells[2].get_text().strip()
+                        if attachment_text:
+                            # Split by newlines and clean up
+                            mods = [
+                                mod.strip()
+                                for mod in attachment_text.split("\n")
+                                if mod.strip()
+                            ]
+                            attachments.extend(mods)
+
+        # Also look for compatibility sections
+        compat_sections = soup.find_all(
+            ["h2", "h3", "h4"],
+            string=lambda text: text
+            and ("compatibility" in text.lower() or "mods" in text.lower()),
+        )
+        for section in compat_sections:
+            # Get content following the section
+            current = section.find_next_sibling()
+            while current and current.name not in ["h2", "h3", "h4"]:
+                if current.name in ["ul", "ol"]:
+                    items = current.find_all("li")
+                    for item in items:
+                        text = item.get_text().strip()
+                        if text and len(text) > 10:  # Filter out short items
+                            attachments.append(text)
+                current = current.find_next_sibling()
+
+        return list(set(attachments))  # Remove duplicates
 
     def _parse_interactive_map_data(self, script_content: str) -> List[Dict]:
         """Parse interactive map JavaScript to extract extract locations"""
