@@ -1,0 +1,29 @@
+# Environment and secrets
+.env
+.venv
+
+# Data files (regenerate with scraping)
+data/
+*.npy
+*.pkl
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
