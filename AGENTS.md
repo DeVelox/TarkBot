@@ -50,10 +50,10 @@ sentence-transformers>=5.1.2
 
 ## Phase 2: Data Collection & Processing
 
-### Step 2.1: Target Wiki Pages ✅ CONFIRMED
-**Choice**: Option A (Essential pages with CLI management)
-- Weapons, Ammunition, Armor
-- Quests, Maps, Extract locations
+### Step 2.1: Target Wiki Pages ✅ ENHANCED
+**Choice**: Option A (Essential pages with CLI management) + Full weapon coverage
+- **176 weapons** scraped from Tarkov wiki (all available)
+- Ammunition, Armor, Quests, Maps, Extract locations
 - CLI commands for adding/removing categories
 
 ### Step 2.2: Scraping Strategy ✅ CONFIRMED

@@ -193,7 +193,7 @@ Description: {description}{attachment_text}"""
                         print(f"Error parsing weapon row: {e}")
                         continue
 
-        return pages[:20]  # Limit for testing
+        return pages
 
     def _scrape_maps_and_locations(
         self, soup, base_url: str, category_name: str
