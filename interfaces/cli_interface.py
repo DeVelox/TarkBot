@@ -19,7 +19,15 @@ DEFAULT_CATEGORIES = {
     "armor": "https://escapefromtarkov.fandom.com/wiki/Armor_vests",
     "quests": "https://escapefromtarkov.fandom.com/wiki/Quests",
     "maps": "https://escapefromtarkov.fandom.com/wiki/Maps",
-    "customs": "https://escapefromtarkov.fandom.com/wiki/Customs",  # Specific map pages
+    # Major map pages
+    "customs": "https://escapefromtarkov.fandom.com/wiki/Customs",
+    "shoreline": "https://escapefromtarkov.fandom.com/wiki/Shoreline",
+    "woods": "https://escapefromtarkov.fandom.com/wiki/Woods",
+    "factory": "https://escapefromtarkov.fandom.com/wiki/Factory",
+    "interchange": "https://escapefromtarkov.fandom.com/wiki/Interchange",
+    "reserve": "https://escapefromtarkov.fandom.com/wiki/Reserve",
+    "lighthouse": "https://escapefromtarkov.fandom.com/wiki/Lighthouse",
+    "streets": "https://escapefromtarkov.fandom.com/wiki/Streets_of_Tarkov",
     "locations": "https://escapefromtarkov.fandom.com/wiki/Locations",
 }
 
@@ -170,19 +178,110 @@ def data():
 
 
 @data.command("scrape")
-@click.option("--category", required=True, help="Category name to scrape")
+@click.option("--category", help="Category name to scrape")
+@click.option(
+    "--all", "scrape_all", is_flag=True, help="Scrape all unscraped categories"
+)
 @click.option("--url", help="Category URL (optional, will use default if not provided)")
-def data_scrape(category, url):
-    """Scrape a wiki category"""
-    if not url:
-        if category not in DEFAULT_CATEGORIES:
-            click.echo(f"Unknown category: {category}")
-            click.echo("Use --url to specify a custom category URL")
-            return
-        url = DEFAULT_CATEGORIES[category]
-
+def data_scrape(category, scrape_all, url):
+    """Scrape a wiki category or all unscraped categories"""
     bot = TarkBotCLI()
-    bot.scrape_category(category, url)
+
+    if scrape_all:
+        # Check which categories have been scraped
+        scraped_categories = set()
+        if bot.vector_store.vectors is not None:
+            # Get all unique categories from metadata
+            for metadata in bot.vector_store.metadata:
+                category_name = metadata.get("category", "")
+                if category_name:
+                    scraped_categories.add(category_name)
+
+        # Categories to scrape
+        unscraped_categories = []
+        for cat_name, cat_url in DEFAULT_CATEGORIES.items():
+            if cat_name not in scraped_categories:
+                unscraped_categories.append((cat_name, cat_url))
+
+        if not unscraped_categories:
+            click.echo("All categories have already been scraped!")
+            return
+
+        click.echo(f"Found {len(unscraped_categories)} unscraped categories:")
+        for cat_name, cat_url in unscraped_categories:
+            click.echo(f"  - {cat_name}")
+
+        # Ask for confirmation
+        if not click.confirm("Do you want to scrape all unscraped categories?"):
+            return
+
+        # Scrape each unscraped category
+        total_pages = 0
+        for cat_name, cat_url in unscraped_categories:
+            click.echo(f"\nScraping {cat_name}...")
+            pages = bot.scraper.scrape_category(cat_url, cat_name)
+
+            if pages:
+                # Process pages for vector storage
+                all_chunks = []
+                all_embeddings = []
+                all_metadata = []
+
+                for page in pages:
+                    click.echo(f"  Processing: {page.title}")
+
+                    # Chunk the content
+                    chunks = bot.chunker.chunk_document(page.content, page.title)
+
+                    for chunk in chunks:
+                        # Add page metadata to chunk
+                        chunk_metadata = {
+                            **chunk,
+                            "category": page.category,
+                            "url": page.url,
+                            "page_metadata": page.metadata,
+                            "last_updated": page.last_updated,
+                        }
+
+                        all_chunks.append(chunk["text"])
+                        all_metadata.append(chunk_metadata)
+
+                if all_chunks:
+                    # Generate embeddings
+                    click.echo(
+                        f"  Generating embeddings for {len(all_chunks)} chunks..."
+                    )
+                    embeddings = bot.embedder.embed_texts(all_chunks)
+
+                    # Add to vector store
+                    bot.vector_store.add_vectors(embeddings, all_metadata)
+                    bot.vector_store.save_data()
+
+                    click.echo(f"  Added {len(all_chunks)} chunks to vector store")
+                    total_pages += len(pages)
+                else:
+                    click.echo(f"  No content found for {cat_name}")
+            else:
+                click.echo(f"  No pages found for {cat_name}")
+
+        click.echo(
+            f"\nCompleted! Scraped {total_pages} pages across {len(unscraped_categories)} categories."
+        )
+    else:
+        # Single category scraping
+        if not category:
+            click.echo("Error: --category is required when not using --all")
+            click.echo("Use --all to scrape all unscraped categories")
+            return
+
+        if not url:
+            if category not in DEFAULT_CATEGORIES:
+                click.echo(f"Unknown category: {category}")
+                click.echo("Use --url to specify a custom category URL")
+                return
+            url = DEFAULT_CATEGORIES[category]
+
+        bot.scrape_category(category, url)
 
 
 @data.command("stats")
@@ -190,6 +289,126 @@ def data_stats():
     """Show database statistics"""
     bot = TarkBotCLI()
     bot.get_stats()
+
+
+@data.command("status")
+def data_status():
+    """Show scraping status for all categories"""
+    bot = TarkBotCLI()
+
+    # Check which categories have been scraped
+    scraped_categories = set()
+    category_counts = {}
+
+    if bot.vector_store.vectors is not None:
+        # Get all unique categories from metadata
+        for metadata in bot.vector_store.metadata:
+            category = metadata.get("category", "")
+            if category:
+                scraped_categories.add(category)
+                category_counts[category] = category_counts.get(category, 0) + 1
+
+    click.echo("Category Scraping Status:")
+    click.echo("=" * 40)
+
+    all_categories = list(DEFAULT_CATEGORIES.keys())
+    all_categories.sort()
+
+    for category in all_categories:
+        status = "✅ Scraped" if category in scraped_categories else "❌ Not scraped"
+        count = (
+            f"({category_counts.get(category, 0)} items)"
+            if category in scraped_categories
+            else ""
+        )
+        click.echo(f"  {category:<12} {status} {count}")
+
+    scraped_count = len(scraped_categories)
+    total_count = len(DEFAULT_CATEGORIES)
+
+    click.echo(f"\nSummary: {scraped_count}/{total_count} categories scraped")
+    if scraped_count < total_count:
+        click.echo(
+            f"Run 'uv run main.py data scrape-all' to scrape remaining categories"
+        )
+
+    # Check which categories have been scraped
+    scraped_categories = set()
+    if bot.vector_store.vectors is not None:
+        # Get all unique categories from metadata
+        for metadata in bot.vector_store.metadata:
+            category = metadata.get("category", "")
+            if category:
+                scraped_categories.add(category)
+
+    # Categories to scrape
+    unscraped_categories = []
+    for category, url in DEFAULT_CATEGORIES.items():
+        if category not in scraped_categories:
+            unscraped_categories.append((category, url))
+
+    if not unscraped_categories:
+        click.echo("All categories have already been scraped!")
+        return
+
+    click.echo(f"Found {len(unscraped_categories)} unscraped categories:")
+    for category, url in unscraped_categories:
+        click.echo(f"  - {category}")
+
+    # Ask for confirmation
+    if not click.confirm("Do you want to scrape all unscraped categories?"):
+        return
+
+    # Scrape each unscraped category
+    total_pages = 0
+    for category, url in unscraped_categories:
+        click.echo(f"\nScraping {category}...")
+        pages = bot.scraper.scrape_category(url, category)
+
+        if pages:
+            # Process pages for vector storage
+            all_chunks = []
+            all_embeddings = []
+            all_metadata = []
+
+            for page in pages:
+                click.echo(f"  Processing: {page.title}")
+
+                # Chunk the content
+                chunks = bot.chunker.chunk_document(page.content, page.title)
+
+                for chunk in chunks:
+                    # Add page metadata to chunk
+                    chunk_metadata = {
+                        **chunk,
+                        "category": page.category,
+                        "url": page.url,
+                        "page_metadata": page.metadata,
+                        "last_updated": page.last_updated,
+                    }
+
+                    all_chunks.append(chunk["text"])
+                    all_metadata.append(chunk_metadata)
+
+            if all_chunks:
+                # Generate embeddings
+                click.echo(f"  Generating embeddings for {len(all_chunks)} chunks...")
+                embeddings = bot.embedder.embed_texts(all_chunks)
+
+                # Add to vector store
+                bot.vector_store.add_vectors(embeddings, all_metadata)
+                bot.vector_store.save_data()
+
+                click.echo(f"  Added {len(all_chunks)} chunks to vector store")
+                total_pages += len(pages)
+            else:
+                click.echo(f"  No content found for {category}")
+        else:
+            click.echo(f"  No pages found for {category}")
+
+    click.echo(
+        f"\nCompleted! Scraped {total_pages} pages across {len(unscraped_categories)} categories."
+    )
 
 
 if __name__ == "__main__":

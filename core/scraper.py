@@ -116,7 +116,18 @@ class TarkovWikiScraper:
             if category_name == "weapons":
                 # Special handling for weapons page - extract from tables
                 pages = self._scrape_weapons_from_table(soup, category_url)
-            elif category_name in ["maps", "locations", "customs"]:
+            elif category_name in [
+                "maps",
+                "locations",
+                "customs",
+                "shoreline",
+                "woods",
+                "factory",
+                "interchange",
+                "reserve",
+                "lighthouse",
+                "streets",
+            ]:
                 # Special handling for map/location pages
                 pages = self._scrape_maps_and_locations(
                     soup, category_url, category_name
@@ -214,17 +225,17 @@ Description: {description}{attachment_text}"""
 
         for section in map_sections:
             section_title = section.get_text().strip()
+            # Be more inclusive for map pages - include extractions, bosses, etc.
             if any(
                 keyword in section_title.lower()
                 for keyword in [
-                    "map",
-                    "location",
                     "extract",
-                    "dorm",
-                    "customs",
-                    "shoreline",
-                    "woods",
-                    "factory",
+                    "exfil",
+                    "boss",
+                    "spawn",
+                    "key",
+                    "location",
+                    "map",
                 ]
             ):
                 # Get the content following this section
@@ -271,16 +282,17 @@ Description: {description}{attachment_text}"""
                     for extract in map_extracts:
                         # Create more searchable content
                         location_hint = ""
+                        map_name = category_name.title()
                         if "dorm" in extract["title"].lower():
-                            location_hint = "This extract is located near the dormitories on the Customs map. "
+                            location_hint = f"This extract is located near the dormitories on the {map_name} map. "
                         elif "boat" in extract["title"].lower():
-                            location_hint = "This extract is located at the waterfront on the Customs map. "
+                            location_hint = f"This extract is located at the waterfront on the {map_name} map. "
                         elif "bunker" in extract["title"].lower():
-                            location_hint = "This extract is located underground in a bunker on the Customs map. "
+                            location_hint = f"This extract is located underground in a bunker on the {map_name} map. "
 
                         content = f"""Extract Location: {extract["title"]}
 
-{location_hint}This is an extraction point on the {extract.get("map", "Customs")} map in Escape from Tarkov.
+{location_hint}This is an extraction point on the {map_name} map in Escape from Tarkov.
 
 Description: {extract.get("description", "No description available")}
 
@@ -294,19 +306,18 @@ To use this extract, navigate to the location shown on the interactive map and a
                             content=content,
                             metadata={
                                 "type": "extract_location",
-                                "map": extract.get("map", "Unknown"),
+                                "map": category_name.title(),  # Use the actual map name
                                 "requirements": extract.get("requirements", "None"),
                                 "coordinates": extract.get("position", []),
-                                "location_hint": location_hint.strip(),
                             },
                             url=base_url,
                             last_updated="2024-01-01",
                         )
                         pages.append(page)
                 except Exception as e:
-                    print(f"Error parsing map data: {e}")
+                    print(f"Error parsing interactive map: {e}")
 
-        return pages[:20]  # Limit for testing
+        return pages
 
     def _extract_weapon_attachments(self, soup, weapon_name: str) -> List[str]:
         """Extract attachment/modification information for a weapon"""
@@ -383,7 +394,7 @@ To use this extract, navigate to the location shown on the interactive map and a
                         "title": clean_title.strip(),
                         "description": clean_desc.strip(),
                         "requirements": requirements,
-                        "map": "Customs",  # Assuming this is for Customs based on the script
+                        "map": "Unknown",  # Will be overridden by caller
                     }
                 )
 

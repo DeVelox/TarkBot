@@ -51,10 +51,12 @@ sentence-transformers>=5.1.2
 ## Phase 2: Data Collection & Processing
 
 ### Step 2.1: Target Wiki Pages ✅ ENHANCED
-**Choice**: Option A (Essential pages with CLI management) + Full weapon coverage
+**Choice**: Option A (Essential pages with CLI management) + Full weapon coverage + Map extracts
 - **176 weapons** scraped from Tarkov wiki (all available)
+- **Customs & Shoreline** extract locations with requirements
 - Ammunition, Armor, Quests, Maps, Extract locations
 - CLI commands for adding/removing categories
+- **Smart scraping**: Only scrape unscraped categories
 
 ### Step 2.2: Scraping Strategy ✅ CONFIRMED
 **Choice**: Option B (Batch scraping with caching)
@@ -151,6 +153,7 @@ python main.py category list
 
 # Data operations
 python main.py data scrape --category weapons
+python main.py data scrape --all  # Scrape all unscraped categories
 python main.py data stats
 ```
 
@@ -226,6 +229,7 @@ python main.py data stats
 - [x] Handles map location queries
 - [x] Provides loadout recommendations
 - [ ] Provides quest information
+- [x] Provides map extraction information
 - [x] CLI interface works smoothly
 - [x] Response time < 3 seconds
 - [x] Sources cited in answers
@@ -278,7 +282,9 @@ uv run main.py category list
 
 # Data operations
 uv run main.py data scrape --category weapons
-uv run main.py data stats
+uv run main.py data scrape --all  # Scrape all unscraped categories
+uv run main.py data status        # Show scraping status
+uv run main.py data stats         # Show database statistics
 ```
 
 **Why use `uv run`?**
