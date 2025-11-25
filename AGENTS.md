@@ -1,46 +1,39 @@
 # TarkBot AI Agent Implementation Plan
 
 ## Project Overview
-Build an AI agent that answers Escape from Tarkov questions using the official wiki as source of truth, evolving from CLI to voice Discord bot.
+Build an AI agent that provides item pricing and quest requirement information for Escape from Tarkov using the tarkov.dev API, with natural language responses powered by Gemini AI.
 
 ---
 
 ## Phase 1: Project Setup & Core Infrastructure
 
-### Step 1.1: Project Structure ✅ CONFIRMED
-**Choice**: Option B (Modular structure for extensibility)
+### Step 1.1: Project Structure ✅ UPDATED
+**Choice**: Modular structure optimized for API-based item lookup
 ```
 tarkbot/
 ├── core/
 │   ├── __init__.py
-│   ├── scraper.py
-│   ├── embeddings.py
-│   ├── vector_store.py
-│   └── query_engine.py
+│   ├── tarkov_api_client.py    # tarkov.dev GraphQL API wrapper
+│   ├── item_lookup.py          # Item search and data processing
+│   └── response_formatter.py   # Gemini-powered natural responses
 ├── interfaces/
 │   ├── __init__.py
-│   └── cli_interface.py
+│   ├── cli_interface.py        # CLI commands (text input/output)
+│   └── voice_interface.py      # Voice I/O (stage 2)
 ├── api/
 │   ├── __init__.py
-│   └── llm_client.py
-├── data/
-│   └── .gitkeep
-├── main.py
-└── requirements.txt
+│   └── gemini_client.py        # Gemini API client
+├── main.py                     # Entry point
+└── .env                        # API keys
 ```
 
-### Step 1.2: Dependencies ✅ CONFIRMED
-**Choice**: Option B (Enhanced requirements for future voice support)
+### Step 1.2: Dependencies ✅ UPDATED
+**Choice**: Minimal dependencies focused on API integration and voice
 ```
-beautifulsoup4>=4.14.2
 click>=8.3.1
-discord-py>=2.6.4
 google-generativeai>=0.8.5
-openai>=2.8.1
-pydub>=0.25.1
 python-dotenv>=1.2.1
 requests>=2.32.5
-sentence-transformers>=5.1.2
 ```
 
 ### Step 1.3: Package Manager ✅ CONFIRMED
@@ -48,115 +41,113 @@ sentence-transformers>=5.1.2
 
 ---
 
-## Phase 2: Data Collection & Processing
+## Phase 2: API Integration & Data Processing
 
-### Step 2.1: Target Wiki Pages ✅ ENHANCED
-**Choice**: Option A (Essential pages with CLI management) + Full weapon coverage + Map extracts + JSON-based categories
-- **176 weapons** scraped from Tarkov wiki (all available)
-- **Customs & Shoreline** extract locations with requirements
-- Ammunition, Armor, Quests, Maps, Extract locations
-- **JSON-based category management** (`data/categories.json`)
-- **Dynamic category addition** with configurable scraping methods
-- **Smart scraping**: Only scrape unscraped categories
-- **Configurable scraping methods**: general_extraction, table_extraction, map_extraction
+### Step 2.1: Data Source ✅ UPDATED
+**Choice**: tarkov.dev GraphQL API (official data source)
+- **Real-time item data** from official API
+- **Pricing information**: vendor prices, flea market prices
+- **Quest requirements**: items needed for quests with FIR status
+- **Trader information**: all trader cash offers and prices
+- **Barter trades**: what items are used for/obtained from barters
+- **No local storage needed**: API provides current data
 
-### Step 2.2: Scraping Strategy ✅ CONFIRMED
-**Choice**: Option B (Batch scraping with caching)
-- Scrape entire categories at once
-- Local caching with update schedule
-- Faster responses, offline capability
-- Avoid unnecessary API hits
+### Step 2.2: API Strategy ✅ CONFIRMED
+**Choice**: Direct API integration with caching
+- Query tarkov.dev GraphQL API for item data
+- Local response caching for performance
+- Real-time pricing and quest information
+- No scraping or local data maintenance
 
-### Step 2.3: Data Structure ✅ CONFIRMED
-**Choice**: Option B (Rich metadata)
+### Step 2.3: Data Structure ✅ UPDATED
+**Choice**: API response format with natural language processing
 ```python
 {
-    "title": "AK-74N",
-    "category": "weapons",
-    "subcategory": "assault_rifles",
-    "content": "Weapon description...",
-    "metadata": {
-        "caliber": "5.45x39mm",
-        "ergonomics": 38,
-        "recoil": 120,
-        "slots": ["mod_scope", "mod_muzzle"]
-    },
-    "url": "https://...",
-    "last_updated": "2024-01-01"
+    "item_name": "Cat figurine",
+    "vendor_price": 12000,
+    "vendor_trader": "Prapor",
+    "flea_price": 8500,
+    "quest_requirements": [
+        {
+            "quest_name": "Collector",
+            "trader": "Jaeger",
+            "found_in_raid": True
+        }
+    ]
 }
 ```
 
 ---
 
-## Phase 3: Vector Storage & Search
+## Phase 3: Query Processing & LLM Integration
 
-### Step 3.1: Embedding Model ✅ CONFIRMED
-**Choice**: Option B (`all-mpnet-base-v2`)
-- Higher quality embeddings
-- Better understanding of Tarkov terminology
-- 768 dimensions, moderate speed
-
-### Step 3.2: Chunking Strategy ✅ CONFIRMED
-**Choice**: Option B (Semantic chunking)
-- Respect section boundaries (headings, paragraphs)
-- Maintain context integrity
-- Variable chunk sizes based on content structure
-
-### Step 3.3: Vector Store Configuration ✅ UPDATED
-**Choice**: Option B (Persistent storage)
-- Numpy-based vector store with local files (no ChromaDB dependency)
-- Survives restarts, lightweight and fast
-- Data persistence between sessions
-
----
-
-## Phase 4: Query Processing & LLM Integration
-
-### Step 4.1: LLM Provider ✅ CONFIRMED
+### Step 3.1: LLM Provider ✅ CONFIRMED
 **Choice**: Google Gemini 2.0 Flash-Lite
 - Latest generation model
 - Fast responses with good reasoning
 - Free tier available
 - Perfect balance of speed and quality
 
-### Step 4.2: Query Classification ✅ CONFIRMED
-**Choice**: Option C (Hybrid approach)
-- Simple keyword rules for common patterns (80% of queries)
-- LLM fallback for complex queries (20% of queries)
-- Balance of speed and flexibility
-- Natural language support
+### Step 3.2: Query Classification ✅ UPDATED
+**Choice**: Direct item extraction from natural language
+- Extract item names from user questions
+- Query tarkov.dev API for item data
+- Filter for pricing and quest requirements
+- Simple and efficient processing
 
-### Step 4.3: Response Generation ✅ CONFIRMED
-**Choice**: Option C (Adaptive response)
-- Simple queries: Direct retrieval (fast)
-- Complex queries: RAG synthesis (detailed)
-- Optimize for speed vs quality
+### Step 3.3: Response Generation ✅ UPDATED
+**Choice**: Natural language formatting with Gemini
+- Format API data into conversational responses
+- Handle different question types naturally
+- Include vendor price, flea price, and quest info (if applicable)
+- Short, concise responses with only relevant information in natural sentences, not data dumps
+
+---
+
+## Phase 4: Voice Integration (Stage 2)
+
+### Step 4.1: Speech-to-Text ✅ PLANNED
+**Choice**: Google Cloud Speech-to-Text API
+- High accuracy speech recognition
+- Free tier available
+- Natural language input support
+- Real-time processing
+
+### Step 4.2: Text-to-Speech ✅ PLANNED
+**Choice**: Google Cloud Text-to-Speech API
+- Natural voice synthesis
+- Multiple voice options
+- Free tier available
+- Fast response times
+
+### Step 4.3: Voice Interface Logic ✅ PLANNED
+**Choice**: Adaptive voice/text interaction
+- Voice input → Voice output (default)
+- Voice input → Text output (--no-speak flag)
+- Text input → Text output (development mode)
+- Seamless switching between modes
 
 ---
 
 ## Phase 5: CLI Interface Development
 
 ### Step 5.1: CLI Framework ✅ CONFIRMED
-**Choice**: Option B (Click framework)
+**Choice**: Click framework
 - Professional CLI with commands, options, help
 - Better user experience
 - Command structure for development and testing
 
-### Step 5.2: Command Structure ✅ CONFIRMED
-**Choice**: Option C (Subcommands with default ask)
+### Step 5.2: Command Structure ✅ UPDATED
+**Choice**: Simple item inquiry commands
 ```bash
-# Default command (ask)
-python main.py "What is the best 7.62x39 ammo?"
+# Development phase (text only)
+uv run main.py "Do I need cat figurine?"
+uv run main.py "price of AK-74N"
+uv run main.py "LEDX price"
 
-# Category management
-python main.py category add --name medical --url "https://..." --method general_extraction
-python main.py category remove --name medical
-python main.py category list
-
-# Data operations
-python main.py data scrape --category weapons
-python main.py data scrape --all  # Scrape all unscraped categories
-python main.py data stats
+# Stage 2 (voice support)
+uv run main.py --voice "Do I need cat figurine?"
+uv run main.py --voice --no-speak "price of AK-74N"  # Voice input, text output
 ```
 
 ---
@@ -196,11 +187,11 @@ python main.py data stats
 
 ## Implementation Order
 
-1. **Week 1**: Setup + Core scraping + Vector store
-2. **Week 2**: Query engine + CLI interface
+1. **Week 1**: Setup + Core API integration + Item lookup
+2. **Week 2**: Response formatting + CLI interface
 3. **Week 3**: Testing + Optimization
-4. **Week 4**: Discord bot (optional)
-5. **Week 5**: Voice integration (optional)
+4. **Week 4**: Voice integration (optional)
+5. **Week 5**: Discord bot (optional)
 
 ---
 
@@ -212,31 +203,29 @@ python main.py data stats
 - **Unified response format** for all interfaces
 
 ### Data Management
-- **Targeted scraping** with CLI category management
-- **Rich metadata** for precise queries
-- **Persistent caching** to avoid API calls
-- **Semantic chunking** for context preservation
+- **API-first approach** using official tarkov.dev GraphQL API
+- **Real-time pricing** from live flea market data
+- **Quest integration** with Found in Raid status checking
+- **No local storage** - API provides current data
 
 ### Performance
-- **Hybrid query classification** for speed
-- **Adaptive response generation** for efficiency
-- **Local embeddings** for fast retrieval
-- **Basic metrics** for performance tracking
+- **Direct item extraction** from natural language queries
+- **Gemini-powered formatting** for natural responses
+- **API caching** for performance optimization
+- **Basic metrics** for response time tracking
 
 ---
 
 ## Success Criteria
 
-- [x] Can answer basic ammo/weapon questions
-- [x] Handles map location queries
-- [x] Provides loadout recommendations
-- [ ] Provides quest information
-- [x] Provides map extraction information
-- [x] CLI interface works smoothly
-- [x] Response time < 3 seconds
-- [x] Sources cited in answers
-- [x] Category management via CLI
-- [x] Persistent data storage
+- [ ] Can provide vendor and flea market prices for items
+- [ ] Can identify quest requirements with FIR status
+- [ ] Provides natural language responses
+- [ ] CLI interface works smoothly
+- [ ] Response time < 3 seconds
+- [ ] Sources cited in answers
+- [ ] Voice integration (Stage 2)
+- [ ] Discord integration (Stage 3)
 
 ---
 
@@ -260,10 +249,10 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 uv init
 
 # Install dependencies (already done)
-uv add requests beautifulsoup4 sentence-transformers openai click discord.py pydub python-dotenv google-generativeai
+uv add click google-generativeai python-dotenv requests
 
 # Create project structure (already done)
-mkdir -p core interfaces api data
+mkdir -p core interfaces api
 ```
 
 ## Running the Project
@@ -272,43 +261,17 @@ mkdir -p core interfaces api data
 
 ```bash
 # Ask questions
-uv run main.py "What is the AK-74N?"
+uv run main.py "Do I need cat figurine?"
+uv run main.py "price of AK-74N"
+uv run main.py "LEDX price"
 
 # Or explicitly use ask command
-uv run main.py ask "What is the AK-74N?"
+uv run main.py ask "Do I need cat figurine?"
 
-# Category management
-uv run main.py category add --name medical --url "https://..." --method general_extraction
-uv run main.py category remove --name medical
-uv run main.py category list
-
-# Data operations
-uv run main.py data scrape --category weapons
-uv run main.py data scrape --all  # Scrape all unscraped categories
-uv run main.py data status        # Show scraping status
-uv run main.py data stats         # Show database statistics
+# Stage 2 (voice support)
+uv run main.py --voice "Do I need cat figurine?"
+uv run main.py --voice --no-speak "price of AK-74N"  # Voice input, text output
 ```
-
-## Category Configuration
-
-**Categories are stored in `data/categories.json` and can be edited directly:**
-
-```json
-{
-  "categories": {
-    "weapons": {
-      "url": "https://escapefromtarkov.fandom.com/wiki/Weapons",
-      "method": "table_extraction",
-      "description": "Extract weapon data from wiki tables"
-    }
-  }
-}
-```
-
-**Available scraping methods:**
-- `general_extraction`: Standard wiki page content
-- `table_extraction`: Weapon/ammo tables (structured data)
-- `map_extraction`: Map pages with extracts and locations
 
 **Why use `uv run`?**
 - Automatically activates the virtual environment
@@ -349,6 +312,7 @@ Create a `.env` file in the project root:
 # .env
 GEMINI_API_KEY=your_gemini_api_key_here
 DISCORD_BOT_TOKEN=your_discord_token_here  # For future use
+GOOGLE_APPLICATION_CREDENTIALS=path/to/speech_credentials.json  # For future use
 ```
 
 **The `.env` file is automatically loaded when using `uv run`.**
@@ -365,11 +329,17 @@ If you see import errors in your IDE:
 ### Common Issues
 - **Module not found**: Run `uv sync` to ensure dependencies are installed
 - **API errors**: Check `.env` file has correct API keys
-- **Vector store empty**: Run `uv run main.py scrape --category weapons` first
+- **No item found**: Verify item name spelling against tarkov.dev
 
 ---
 
 ## API Setup
+
+### Tarkov.dev API
+- **Endpoint**: `https://api.tarkov.dev/graphql`
+- **Method**: POST with JSON payload
+- **No authentication required**
+- **Rate limiting**: No official limits (be reasonable)
 
 ### Google Gemini
 1. Get API key from Google AI Studio
@@ -394,27 +364,22 @@ If you see import errors in your IDE:
 tarkbot/
 ├── core/
 │   ├── __init__.py
-│   ├── scraper.py          # Wiki scraping logic
-│   ├── embeddings.py       # Text processing
-│   ├── vector_store.py     # Numpy-based vector storage
-│   └── query_engine.py     # Core Q&A logic
+│   ├── tarkov_api_client.py    # tarkov.dev GraphQL API wrapper
+│   ├── item_lookup.py          # Item search and data processing
+│   └── response_formatter.py   # Gemini-powered natural responses
 ├── interfaces/
 │   ├── __init__.py
-│   └── cli_interface.py    # CLI implementation
+│   ├── cli_interface.py        # CLI commands (text input/output)
+│   └── voice_interface.py      # Voice I/O (stage 2)
 ├── api/
 │   ├── __init__.py
-│   └── llm_client.py       # Gemini API client
-├── data/
-│   ├── vectors.npy         # Vector embeddings
-│   ├── metadata.pkl        # Document metadata
-│   ├── cache/              # Scraped content cache
-│   └── categories.json     # Category configuration
+│   └── gemini_client.py        # Gemini API client
 ├── tests/
-│   ├── test_core.py        # Core functionality tests
-│   └── test_queries.py     # Sample query tests
-├── main.py                 # CLI entry point
-├── requirements.txt        # Dependencies
-└── .env                    # Environment variables
+│   ├── test_core.py            # Core functionality tests
+│   └── test_queries.py         # Sample query tests
+├── main.py                     # CLI entry point
+├── pyproject.toml              # Dependencies
+└── .env                        # Environment variables
 ```
 
 This plan provides a solid foundation for building the TarkBot AI agent with clear upgrade paths to Discord and voice functionality.
