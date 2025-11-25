@@ -19,7 +19,8 @@ DEFAULT_CATEGORIES = {
     "armor": "https://escapefromtarkov.fandom.com/wiki/Armor_vests",
     "quests": "https://escapefromtarkov.fandom.com/wiki/Quests",
     "maps": "https://escapefromtarkov.fandom.com/wiki/Maps",
-    "extracts": "https://escapefromtarkov.fandom.com/wiki/Extract_locations",
+    "customs": "https://escapefromtarkov.fandom.com/wiki/Customs",  # Specific map pages
+    "locations": "https://escapefromtarkov.fandom.com/wiki/Locations",
 }
 
 

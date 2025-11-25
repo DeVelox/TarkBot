@@ -116,6 +116,11 @@ class TarkovWikiScraper:
             if category_name == "weapons":
                 # Special handling for weapons page - extract from tables
                 pages = self._scrape_weapons_from_table(soup, category_url)
+            elif category_name in ["maps", "locations", "customs"]:
+                # Special handling for map/location pages
+                pages = self._scrape_maps_and_locations(
+                    soup, category_url, category_name
+                )
             else:
                 # Default category scraping
                 pages = self._scrape_category_links(soup, category_name, category_url)
@@ -178,6 +183,158 @@ Description: {description}"""
                         continue
 
         return pages[:20]  # Limit for testing
+
+    def _scrape_maps_and_locations(
+        self, soup, base_url: str, category_name: str
+    ) -> List[WikiPage]:
+        """Extract map and location data from wiki pages"""
+        pages = []
+
+        # Look for map/location sections
+        content_div = soup.find("div", {"class": "mw-parser-output"})
+        if not content_div:
+            return pages
+
+        # Extract text content for general information
+        content_text = self._clean_content(content_div)
+
+        # Look for specific map/location information
+        map_sections = content_div.find_all(["h2", "h3", "h4"])
+
+        for section in map_sections:
+            section_title = section.get_text().strip()
+            if any(
+                keyword in section_title.lower()
+                for keyword in [
+                    "map",
+                    "location",
+                    "extract",
+                    "dorm",
+                    "customs",
+                    "shoreline",
+                    "woods",
+                    "factory",
+                ]
+            ):
+                # Get the content following this section
+                section_content = []
+                current = section.find_next_sibling()
+
+                while current and current.name not in ["h2", "h3", "h4"]:
+                    if current.name in ["p", "ul", "ol", "table"]:
+                        section_content.append(current.get_text().strip())
+                    current = current.find_next_sibling()
+
+                if section_content:
+                    full_content = f"{section_title}\n\n" + "\n\n".join(section_content)
+
+                    page = WikiPage(
+                        title=f"{category_name.title()}: {section_title}",
+                        category=category_name,
+                        content=full_content,
+                        metadata={"section": section_title, "type": "location_info"},
+                        url=base_url,
+                        last_updated="2024-01-01",
+                    )
+                    pages.append(page)
+
+        # If no specific sections found, create a general page
+        if not pages and content_text:
+            page = WikiPage(
+                title=f"{category_name.title()} Overview",
+                category=category_name,
+                content=content_text,
+                metadata={"type": "general_info"},
+                url=base_url,
+                last_updated="2024-01-01",
+            )
+            pages.append(page)
+
+        # Extract interactive map data (extract locations)
+        script_tags = soup.find_all("script")
+        for script in script_tags:
+            if script.string and "interactiveMaps" in script.string:
+                try:
+                    # Parse the JavaScript object to extract extract information
+                    map_extracts = self._parse_interactive_map_data(script.string)
+                    for extract in map_extracts:
+                        # Create more searchable content
+                        location_hint = ""
+                        if "dorm" in extract["title"].lower():
+                            location_hint = "This extract is located near the dormitories on the Customs map. "
+                        elif "boat" in extract["title"].lower():
+                            location_hint = "This extract is located at the waterfront on the Customs map. "
+                        elif "bunker" in extract["title"].lower():
+                            location_hint = "This extract is located underground in a bunker on the Customs map. "
+
+                        content = f"""Extract Location: {extract["title"]}
+
+{location_hint}This is an extraction point on the {extract.get("map", "Customs")} map in Escape from Tarkov.
+
+Description: {extract.get("description", "No description available")}
+
+Requirements: {extract.get("requirements", "None")}
+
+To use this extract, navigate to the location shown on the interactive map and activate the extraction when ready to leave the raid."""
+
+                        page = WikiPage(
+                            title=f"Extract: {extract['title']}",
+                            category="extracts",
+                            content=content,
+                            metadata={
+                                "type": "extract_location",
+                                "map": extract.get("map", "Unknown"),
+                                "requirements": extract.get("requirements", "None"),
+                                "coordinates": extract.get("position", []),
+                                "location_hint": location_hint.strip(),
+                            },
+                            url=base_url,
+                            last_updated="2024-01-01",
+                        )
+                        pages.append(page)
+                except Exception as e:
+                    print(f"Error parsing map data: {e}")
+
+        return pages[:20]  # Limit for testing
+
+    def _parse_interactive_map_data(self, script_content: str) -> List[Dict]:
+        """Parse interactive map JavaScript to extract extract locations"""
+        extracts = []
+
+        try:
+            import re
+
+            # Find all exfil_pmc entries (PMC extract points)
+            exfil_pattern = r'"categoryId":"exfil_pmc".*?"title":"([^"]*)".*?"description":"([^"]*)"'
+            matches = re.findall(exfil_pattern, script_content, re.DOTALL)
+
+            for title, description in matches:
+                # Clean up HTML entities and tags
+                clean_title = re.sub(
+                    r"<[^>]+>", "", title.replace("\\n", " ").replace("\\", "")
+                )
+                clean_desc = re.sub(
+                    r"<[^>]+>", "", description.replace("\\n", " ").replace("\\", "")
+                )
+
+                # Extract requirements from description
+                requirements = "None"
+                if "requires" in clean_desc.lower():
+                    requirements = clean_desc
+
+                extracts.append(
+                    {
+                        "title": clean_title.strip(),
+                        "description": clean_desc.strip(),
+                        "requirements": requirements,
+                        "map": "Customs",  # Assuming this is for Customs based on the script
+                    }
+                )
+
+        except Exception as e:
+            print(f"Error parsing interactive map: {e}")
+
+        return extracts
 
     def _scrape_category_links(
         self, soup, category_name: str, base_url: str

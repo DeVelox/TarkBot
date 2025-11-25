@@ -222,14 +222,14 @@ python main.py data stats
 
 ## Success Criteria
 
-- [ ] Can answer basic ammo/weapon questions
-- [ ] Handles map location queries
+- [x] Can answer basic ammo/weapon questions
+- [x] Handles map location queries
 - [ ] Provides quest information
-- [ ] CLI interface works smoothly
-- [ ] Response time < 3 seconds
-- [ ] Sources cited in answers
-- [ ] Category management via CLI
-- [ ] Persistent data storage
+- [x] CLI interface works smoothly
+- [x] Response time < 3 seconds
+- [x] Sources cited in answers
+- [x] Category management via CLI
+- [x] Persistent data storage
 
 ---
 
