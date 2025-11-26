@@ -116,19 +116,20 @@ requests>=2.32.5
 - Low latency with fast inference
 - No local model required
 
-### Step 4.2: Text-to-Speech ✅ PLANNED
-**Choice**: Google Cloud Text-to-Speech API
-- Natural voice synthesis
-- Multiple voice options
-- Free tier available
-- Fast response times
+### Step 4.2: Text-to-Speech ✅ IMPLEMENTED
+**Choice**: Groq PlayAI TTS
+- High-quality voice synthesis via Groq API
+- Natural-sounding responses
+- Fast inference
+- Integrated with voice input flow
 
-### Step 4.3: Voice Interface Logic ✅ PLANNED
-**Choice**: Adaptive voice/text interaction
-- Voice input → Voice output (default)
-- Voice input → Text output (--no-speak flag)
-- Text input → Text output (development mode)
-- Seamless switching between modes
+### Step 4.3: Voice Interface Logic ✅ IMPLEMENTED
+**Choice**: Integrated voice/text interaction
+- Voice input → Voice output (automatic)
+- Voice input → Text output (--debug flag)
+- Text input → Text output (default)
+- Audio recording with sounddevice
+- TTS playback with soundfile
 
 ---
 

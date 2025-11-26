@@ -51,6 +51,31 @@ def transcribe_audio(audio_data, sample_rate):
             os.remove(temp_file)
 
 
+def synthesize_speech(text):
+    """Synthesize speech using Groq TTS."""
+    client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+
+    temp_file = "temp_speech.wav"
+    response = client.audio.speech.create(
+        model="playai-tts", voice="Basil-PlayAI", input=text, response_format="wav"
+    )
+
+    response.write_to_file(temp_file)
+
+    # Play the audio
+    play_audio_file(temp_file)
+
+    # Clean up
+    os.remove(temp_file)
+
+
+def play_audio_file(filename):
+    """Play audio file using sounddevice."""
+    data, samplerate = sf.read(filename)
+    sd.play(data, samplerate)
+    sd.wait()
+
+
 def get_voice_input():
     """Record and transcribe voice input."""
     audio_data, sample_rate = record_audio()

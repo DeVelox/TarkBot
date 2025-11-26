@@ -2,7 +2,7 @@ import click
 import json
 from core.tarkov_api_client import get_item_data
 from core.response_formatter import format_response
-from core.voice_interface import get_voice_input
+from core.voice_interface import get_voice_input, synthesize_speech
 from api.groq_client import init_groq, extract_item_name
 
 
@@ -64,6 +64,8 @@ def ask(question, voice, debug):
     else:
         response = format_response(data, item_name)
         click.echo(response)
+        if voice:
+            synthesize_speech(response)
 
 
 @cli.command()
