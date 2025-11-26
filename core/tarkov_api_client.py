@@ -116,13 +116,27 @@ def get_tasks():
 def get_item_data(name):
     """Get item data with fresh price, using cached metadata."""
     all_items = get_all_items()
-    # Find item by name (case insensitive)
     name_lower = name.lower()
-    matching_items = [item for item in all_items if name_lower in item["name"].lower()]
-    if not matching_items:
-        return None
-    # Prioritize items with more usedInTasks
-    matching_items.sort(key=lambda x: len(x.get("usedInTasks", [])), reverse=True)
+    words = name_lower.split()
+
+    # First, try exact substring matches
+    substring_matches = [
+        item for item in all_items if name_lower in item["name"].lower()
+    ]
+    if substring_matches:
+        matching_items = substring_matches
+    else:
+        # Fall back to multi-word matching
+        matching_items = [
+            item
+            for item in all_items
+            if all(word in item["name"].lower() for word in words)
+        ]
+        if not matching_items:
+            return None
+
+    # Prioritize items with more usedInTasks, then by name length (shorter names first)
+    matching_items.sort(key=lambda x: (-len(x.get("usedInTasks", [])), len(x["name"])))
     item = matching_items[0]
     item_id = item["id"]
 

@@ -32,11 +32,13 @@ tarkbot/
 ```
 click>=8.3.1
 groq>=0.9.0
+num2words>=0.5.13
 numpy>=1.24.0
 sounddevice>=0.4.6
 soundfile>=0.12.0
 python-dotenv>=1.2.1
 requests>=2.32.5
+pynput>=1.8.1
 ```
 
 ### Step 1.3: Package Manager ✅ CONFIRMED
@@ -144,14 +146,20 @@ requests>=2.32.5
 ### Step 5.2: Command Structure ✅ UPDATED
 **Choice**: Simple item inquiry commands
 ```bash
-# Development phase (text only)
+# Ask questions
 uv run main.py "Do I need cat figurine?"
 uv run main.py "price of AK-74N"
 uv run main.py "LEDX price"
 
+# Or explicitly use ask command
+uv run main.py ask "Do I need cat figurine?"
+
 # Stage 2 (voice support)
 uv run main.py --voice "Do I need cat figurine?"
 uv run main.py --voice --no-speak "price of AK-74N"  # Voice input, text output
+
+# No arguments - defaults to voice mode (Windows fix)
+uv run main.py
 ```
 
 ---
@@ -237,19 +245,19 @@ uv run main.py --voice --no-speak "price of AK-74N"  # Voice input, text output
 
 ### ✅ Completed Features
 - **API Integration**: Full tarkov.dev GraphQL API integration with caching
-- **Item Lookup**: Fuzzy search with difflib for item name matching
+- **Item Lookup**: Multi-word search matching for improved item name matching
 - **LLM Integration**: Groq GPT-OSS-20B for natural language processing
 - **Voice Input**: Groq Whisper Large V3 Turbo for speech-to-text
 - **Voice Output**: Groq PlayAI TTS with number-to-text conversion for proper pronunciation
-- **CLI Interface**: Click-based CLI with text and voice modes
+- **CLI Interface**: Click-based CLI with text and voice modes, defaults to voice on no args
 - **Response Formatting**: Natural language responses with pricing and quest info
 - **Number Formatting**: ✅ FIXED - TTS converts numbers to words while text output remains numerical
+- **Config Support**: TOML config file for customizable keybinds with defaults
 
 ### 🔄 Working Features
 - Text queries with natural language item extraction
 - Voice input with 5-second recording duration
-- Interactive voice mode: Press '~' to speak, 'q' to quit
-- Voice input with 5-second recording duration
+- Interactive voice mode: Press 'Ctrl+`' to speak, 'Ctrl+Q' to quit
 - Voice output with proper number pronunciation
 - Debug mode for structured JSON output
 - Test suite with sample queries
@@ -262,6 +270,8 @@ uv run main.py --voice --no-speak "price of AK-74N"  # Voice input, text output
 3. **Performance**: Add response time metrics and optimization
 4. **Discord integration**: Text commands for Discord bot
 5. **Documentation**: Final README and usage examples
+
+
 
 ---
 
@@ -285,7 +295,7 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 uv init
 
 # Install dependencies (already done)
-uv add click google-generativeai python-dotenv requests
+uv add click groq python-dotenv requests num2words numpy sounddevice soundfile pynput
 
 # Create project structure (already done)
 mkdir -p core interfaces api

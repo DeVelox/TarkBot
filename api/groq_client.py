@@ -18,7 +18,7 @@ def generate_response(client, json_data):
     response = client.chat.completions.create(
         model="openai/gpt-oss-20b",
         messages=[
-            {"role": "system", "content": "Transform the given JSON input containing Tarkov item information into a concise, accurate, and natural-sounding sentence, optimized for text-to-speech, without any extra formatting. Use the sell price in Rubles from the flea market as the item's price. Indicate the required quantity for quests or hideout upgrades. Clearly state if the item needs to be found in raid."},
+            {"role": "system", "content": "Transform the given JSON input containing Tarkov item information into a concise, accurate, and natural-sounding sentence, optimized for text-to-speech, without any extra formatting. Use the sell price in Rubles from the flea market as the item's price. Indicate the required quantity for quests or hideout upgrades. Specify who the quest is from. Only if the item needs to be found in raid, mention it."},
             {"role": "user", "content": json_data},
         ],
         temperature=0,
