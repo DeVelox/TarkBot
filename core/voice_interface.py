@@ -1,0 +1,58 @@
+"""
+TarkBot Voice Interface
+Handles audio recording and speech-to-text using Groq Whisper
+"""
+
+import os
+import numpy as np
+import sounddevice as sd
+import soundfile as sf
+from groq import Groq
+
+
+def record_audio(duration=5, sample_rate=16000):
+    """Record audio from microphone for specified duration."""
+    print(f"Recording for {duration} seconds...")
+    audio_data = sd.rec(
+        int(duration * sample_rate), samplerate=sample_rate, channels=1, dtype="int16"
+    )
+    sd.wait()
+    print("Recording finished.")
+    return audio_data.flatten(), sample_rate
+
+
+def save_audio_to_wav(audio_data, sample_rate, filename="temp_audio.wav"):
+    """Save audio data to WAV file."""
+    sf.write(filename, audio_data, sample_rate, subtype="PCM_16")
+    return filename
+
+
+def transcribe_audio(audio_data, sample_rate):
+    """Transcribe audio using Groq Whisper."""
+    # Save to temp file
+    temp_file = save_audio_to_wav(audio_data, sample_rate)
+
+    try:
+        # Use Groq client for transcription
+        client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+
+        with open(temp_file, "rb") as file:
+            transcription = client.audio.transcriptions.create(
+                file=(temp_file, file),
+                model="whisper-large-v3-turbo",
+                response_format="text",
+            )
+
+        return transcription.strip()
+
+    finally:
+        # Clean up temp file
+        if os.path.exists(temp_file):
+            os.remove(temp_file)
+
+
+def get_voice_input():
+    """Record and transcribe voice input."""
+    audio_data, sample_rate = record_audio()
+    text = transcribe_audio(audio_data, sample_rate)
+    return text

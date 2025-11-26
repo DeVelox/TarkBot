@@ -32,6 +32,9 @@ tarkbot/
 ```
 click>=8.3.1
 groq>=0.9.0
+numpy>=1.24.0
+sounddevice>=0.4.6
+soundfile>=0.12.0
 python-dotenv>=1.2.1
 requests>=2.32.5
 ```
@@ -106,12 +109,12 @@ requests>=2.32.5
 
 ## Phase 4: Voice Integration (Stage 2)
 
-### Step 4.1: Speech-to-Text ✅ PLANNED
-**Choice**: Google Cloud Speech-to-Text API
-- High accuracy speech recognition
-- Free tier available
-- Natural language input support
-- Real-time processing
+### Step 4.1: Speech-to-Text ✅ IMPLEMENTED
+**Choice**: Groq Whisper Large V3 Turbo
+- High-quality transcription via Groq API
+- Optimized for English Tarkov queries
+- Low latency with fast inference
+- No local model required
 
 ### Step 4.2: Text-to-Speech ✅ PLANNED
 **Choice**: Google Cloud Text-to-Speech API

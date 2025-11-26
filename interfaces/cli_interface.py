@@ -2,6 +2,7 @@ import click
 import json
 from core.tarkov_api_client import get_item_data
 from core.response_formatter import format_response
+from core.voice_interface import get_voice_input
 from api.groq_client import init_groq, extract_item_name
 
 
@@ -12,14 +13,27 @@ def cli():
 
 
 @cli.command()
-@click.argument("question")
+@click.argument("question", required=False)
+@click.option("--voice", is_flag=True, help="Use voice input instead of text")
 @click.option("--debug", is_flag=True, help="Output structured JSON data")
-def ask(question, debug):
+def ask(question, voice, debug):
     """Ask a question about a Tarkov item."""
+    if voice:
+        click.echo("Listening for voice input...")
+        question = get_voice_input()
+        click.echo(f"Transcribed: {question}")
+
+    if not question:
+        click.echo("No question provided.")
+        return
+
     click.echo(f"Query: {question}")
     model = init_groq()
     item_name = extract_item_name(model, question)
     click.echo(f"Extracted item: {item_name}")
+    if not item_name:
+        click.echo("No item extracted.")
+        return
     data = get_item_data(item_name)
     if debug:
         if not data:
