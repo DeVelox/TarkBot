@@ -13,18 +13,18 @@ Build an AI agent that provides item pricing and quest requirement information f
 tarkbot/
 ├── core/
 │   ├── __init__.py
-│   ├── tarkov_api_client.py    # tarkov.dev GraphQL API wrapper
-│   ├── item_lookup.py          # Item search and data processing
-│   └── response_formatter.py   # Gemini-powered natural responses
+│   ├── response_formatter.py   # LLM-powered natural responses
 ├── interfaces/
 │   ├── __init__.py
 │   ├── cli_interface.py        # CLI commands (text input/output)
-│   └── voice_interface.py      # Voice I/O (stage 2)
+│   └── voice_interface.py      # Voice I/O
 ├── api/
 │   ├── __init__.py
-│   └── gemini_client.py        # Gemini API client
+│   ├── groq_client.py          # Groq API client
+│   └── tarkov_api_client.py    # tarkov.dev GraphQL API wrapper
 ├── main.py                     # Entry point
-└── .env                        # API keys
+├── .env-example                # API keys template
+└── config.toml                 # Keybind configuration
 ```
 
 ### Step 1.2: Dependencies ✅ UPDATED
@@ -64,21 +64,27 @@ pynput>=1.8.1
 - Real-time pricing and quest information
 - No scraping or local data maintenance
 
-### Step 2.3: Data Structure ✅ UPDATED
+### Step 2.3: Data Structure ✅ IMPLEMENTED
 **Choice**: API response format with natural language processing
-```python
+```json
 {
-    "item_name": "Cat figurine",
-    "vendor_price": 12000,
-    "vendor_trader": "Prapor",
-    "flea_price": 8500,
-    "quest_requirements": [
-        {
-            "quest_name": "Collector",
-            "trader": "Jaeger",
-            "found_in_raid": True
-        }
-    ]
+  "item_name": "Cat figurine",
+  "flea_price": 39554,
+  "quests": [
+    {
+      "quest_name": "Living High is Not a Crime - Part 1",
+      "trader": "Ragman",
+      "count": 1,
+      "found_in_raid": true
+    }
+  ],
+  "hideouts": [
+    {
+      "hideout_name": "Hall of Fame",
+      "level": 1,
+      "count": 1
+    }
+  ]
 }
 ```
 
@@ -86,21 +92,21 @@ pynput>=1.8.1
 
 ## Phase 3: Query Processing & LLM Integration
 
-### Step 3.1: LLM Provider ✅ UPDATED
+### Step 3.1: LLM Provider ✅ IMPLEMENTED
 **Choice**: Groq with OpenAI GPT-OSS-20B
 - Fast inference with Groq platform
 - Advanced reasoning for item extraction and response formatting
 - Generous free tier
 - Access to OpenAI models via Groq
 
-### Step 3.2: Query Classification ✅ UPDATED
+### Step 3.2: Query Classification ✅ IMPLEMENTED
 **Choice**: Direct item extraction from natural language
 - Extract item names from user questions
 - Query tarkov.dev API for item data
 - Filter for pricing and quest requirements
 - Simple and efficient processing
 
-### Step 3.3: Response Generation ✅ UPDATED
+### Step 3.3: Response Generation ✅ IMPLEMENTED
 **Choice**: Natural language formatting with Groq
 - Format API data into conversational responses
 - Handle different question types naturally
@@ -137,28 +143,22 @@ pynput>=1.8.1
 
 ## Phase 5: CLI Interface Development
 
-### Step 5.1: CLI Framework ✅ CONFIRMED
+### Step 5.1: CLI Framework ✅ IMPLEMENTED
 **Choice**: Click framework
 - Professional CLI with commands, options, help
 - Better user experience
 - Command structure for development and testing
 
-### Step 5.2: Command Structure ✅ UPDATED
+### Step 5.2: Command Structure ✅ IMPLEMENTED
 **Choice**: Simple item inquiry commands
 ```bash
 # Ask questions
-uv run main.py "Do I need cat figurine?"
-uv run main.py "price of AK-74N"
-uv run main.py "LEDX price"
-
-# Or explicitly use ask command
 uv run main.py ask "Do I need cat figurine?"
 
 # Stage 2 (voice support)
-uv run main.py --voice "Do I need cat figurine?"
-uv run main.py --voice --no-speak "price of AK-74N"  # Voice input, text output
+uv run main.py ask --voice
 
-# No arguments - defaults to voice mode (Windows fix)
+# No arguments - defaults to voice mode
 uv run main.py
 ```
 
@@ -181,29 +181,12 @@ uv run main.py
 
 ---
 
-## Phase 7: Future Expansion (Discord & Voice)
-
-### Step 7.1: Discord Integration
-**Planned**: Text commands only initially
-- `!ask best ammo for 5.45`
-- Simple text responses
-- Same core logic as CLI
-
-### Step 7.2: Voice Integration
-**Planned**: Full voice conversation
-- Speech-to-text (Google Speech-to-Text API - free tier)
-- Text-to-speech (ElevenLabs/OpenAI TTS)
-- Natural voice interaction
-
----
-
 ## Implementation Order
 
-1. **Week 1**: Setup + Core API integration + Item lookup
-2. **Week 2**: Response formatting + CLI interface
-3. **Week 3**: Testing + Optimization
-4. **Week 4**: Voice integration (optional)
-5. **Week 5**: Discord bot (optional)
+1. Setup + Core API integration + Item lookup
+2. Response formatting + CLI interface
+3. Testing + Optimization
+4. Voice integration
 
 ---
 
@@ -222,7 +205,7 @@ uv run main.py
 
 ### Performance
 - **Direct item extraction** from natural language queries
-- **Gemini-powered formatting** for natural responses
+- **Groq-powered formatting** for natural responses
 - **API caching** for performance optimization
 - **Basic metrics** for response time tracking
 
@@ -230,14 +213,14 @@ uv run main.py
 
 ## Success Criteria
 
-- [ ] Can provide vendor and flea market prices for items
-- [ ] Can identify quest requirements with FIR status
-- [ ] Provides natural language responses
-- [ ] CLI interface works smoothly
-- [ ] Response time < 3 seconds
-- [ ] Sources cited in answers
-- [ ] Voice integration (Stage 2)
-- [ ] Discord integration (Stage 3)
+- [x] Can provide vendor and flea market prices for items
+- [x] Can identify quest requirements with FIR status
+- [x] Provides natural language responses
+- [x] CLI interface works smoothly
+- [x] Response time < 3 seconds
+- [x] Sources cited in answers
+- [x] Voice integration
+- [x] Configurable keybinds
 
 ---
 
@@ -245,14 +228,15 @@ uv run main.py
 
 ### ✅ Completed Features
 - **API Integration**: Full tarkov.dev GraphQL API integration with caching
-- **Item Lookup**: Multi-word search matching for improved item name matching
+- **Item Lookup**: Multi-word search matching with substring priority for improved accuracy
 - **LLM Integration**: Groq GPT-OSS-20B for natural language processing
 - **Voice Input**: Groq Whisper Large V3 Turbo for speech-to-text
 - **Voice Output**: Groq PlayAI TTS with number-to-text conversion for proper pronunciation
 - **CLI Interface**: Click-based CLI with text and voice modes, defaults to voice on no args
 - **Response Formatting**: Natural language responses with pricing and quest info
-- **Number Formatting**: ✅ FIXED - TTS converts numbers to words while text output remains numerical
+- **Number Formatting**: TTS converts numbers to words while text output remains numerical
 - **Config Support**: TOML config file for customizable keybinds with defaults
+- **Windows Build**: Automated PyInstaller build with config files in release zip
 
 ### 🔄 Working Features
 - Text queries with natural language item extraction
@@ -268,8 +252,7 @@ uv run main.py
 1. **Voice activity detection**: Optional - add VAD to reduce recording duration
 2. **Error handling**: Improve API failure recovery and retry logic
 3. **Performance**: Add response time metrics and optimization
-4. **Discord integration**: Text commands for Discord bot
-5. **Documentation**: Final README and usage examples
+4. **Documentation**: Final README and usage examples
 
 
 
@@ -281,7 +264,7 @@ uv run main.py
 2. Install dependencies
 3. Implement core components
 4. Test and iterate
-5. Plan Discord/voice integration
+5. Plan voice integration
 
 ---
 
@@ -295,7 +278,7 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 uv init
 
 # Install dependencies (already done)
-uv add click groq python-dotenv requests num2words numpy sounddevice soundfile pynput
+uv sync
 
 # Create project structure (already done)
 mkdir -p core interfaces api
@@ -307,16 +290,10 @@ mkdir -p core interfaces api
 
 ```bash
 # Ask questions
-uv run main.py "Do I need cat figurine?"
-uv run main.py "price of AK-74N"
-uv run main.py "LEDX price"
-
-# Or explicitly use ask command
 uv run main.py ask "Do I need cat figurine?"
 
 # Stage 2 (voice support)
-uv run main.py --voice "Do I need cat figurine?"
-uv run main.py --voice --no-speak "price of AK-74N"  # Voice input, text output
+uv run main.py ask --voice
 ```
 
 **Why use `uv run`?**
@@ -341,10 +318,10 @@ uv run main.py --voice --no-speak "price of AK-74N"  # Voice input, text output
 
 ```bash
 # Run tests
-uv run python tests/test_core.py
+uv run main.py test
 
 # Run with debugging
-uv run python -m pdb main.py ask "test question"
+uv run main.py test --debug
 
 # Install new dependencies
 uv add new-package
@@ -352,13 +329,11 @@ uv add new-package
 
 ### Environment Variables
 
-Create a `.env` file in the project root:
+Create a `.env` file in the project root (copy from `.env-example`):
 
 ```bash
 # .env
 GROQ_API_KEY=your_groq_api_key_here
-DISCORD_BOT_TOKEN=your_discord_token_here  # For future use
-GOOGLE_APPLICATION_CREDENTIALS=path/to/speech_credentials.json  # For future use
 ```
 
 **The `.env` file is automatically loaded when using `uv run`.**
@@ -374,8 +349,9 @@ If you see import errors in your IDE:
 
 ### Common Issues
 - **Module not found**: Run `uv sync` to ensure dependencies are installed
-- **API errors**: Check `.env` file has correct API keys
+- **API errors**: Check `.env` file has correct Groq API key
 - **No item found**: Verify item name spelling against tarkov.dev
+- **Windows Defender warning**: The executable is unsigned; add to exclusions if needed
 
 ---
 
@@ -392,15 +368,7 @@ If you see import errors in your IDE:
 2. Set environment variable: `export GROQ_API_KEY=your_key`
 3. Model: `openai/gpt-oss-20b` (free tier available)
 
-### Google Speech-to-Text (Future)
-1. Enable Google Cloud Speech-to-Text API
-2. Create service account and download JSON key
-3. Set environment variable: `export GOOGLE_APPLICATION_CREDENTIALS=path/to/key.json`
 
-### Discord (Future)
-1. Create Discord bot at Discord Developer Portal
-2. Get bot token
-3. Set environment variable: `export DISCORD_BOT_TOKEN=your_token`
 
 ---
 
@@ -410,22 +378,18 @@ If you see import errors in your IDE:
 tarkbot/
 ├── core/
 │   ├── __init__.py
-│   ├── tarkov_api_client.py    # tarkov.dev GraphQL API wrapper
-│   ├── item_lookup.py          # Item search and data processing
-│   └── response_formatter.py   # Gemini-powered natural responses
+│   ├── response_formatter.py   # LLM-powered natural responses
 ├── interfaces/
 │   ├── __init__.py
 │   ├── cli_interface.py        # CLI commands (text input/output)
-│   └── voice_interface.py      # Voice I/O (stage 2)
+│   └── voice_interface.py      # Voice I/O
 ├── api/
 │   ├── __init__.py
-│   └── gemini_client.py        # Gemini API client
-├── tests/
-│   ├── test_core.py            # Core functionality tests
-│   └── test_queries.py         # Sample query tests
-├── main.py                     # CLI entry point
-├── pyproject.toml              # Dependencies
-└── .env                        # Environment variables
+│   ├── groq_client.py          # Groq API client
+│   └── tarkov_api_client.py    # tarkov.dev GraphQL API wrapper
+├── main.py                     # Entry point
+├── .env-example                # API keys template
+└── config.toml                 # Keybind configuration
 ```
 
-This plan provides a solid foundation for building the TarkBot AI agent with clear upgrade paths to Discord and voice functionality.
+This plan provides a solid foundation for building the TarkBot AI agent with voice functionality.
