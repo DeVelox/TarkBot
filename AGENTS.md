@@ -1,7 +1,7 @@
 # TarkBot AI Agent Implementation Plan
 
 ## Project Overview
-Build an AI agent that provides item pricing and quest requirement information for Escape from Tarkov using the tarkov.dev API, with natural language responses powered by Gemini AI.
+Build an AI agent that provides item pricing and quest requirement information for Escape from Tarkov using the tarkov.dev API, with natural language responses powered by Groq AI.
 
 ---
 
@@ -31,7 +31,7 @@ tarkbot/
 **Choice**: Minimal dependencies focused on API integration and voice
 ```
 click>=8.3.1
-google-generativeai>=0.8.5
+groq>=0.9.0
 python-dotenv>=1.2.1
 requests>=2.32.5
 ```
@@ -81,12 +81,12 @@ requests>=2.32.5
 
 ## Phase 3: Query Processing & LLM Integration
 
-### Step 3.1: LLM Provider ✅ CONFIRMED
-**Choice**: Google Gemini 2.0 Flash-Lite
-- Latest generation model
-- Fast responses with good reasoning
-- Free tier available
-- Perfect balance of speed and quality
+### Step 3.1: LLM Provider ✅ UPDATED
+**Choice**: Groq with OpenAI GPT-OSS-20B
+- Fast inference with Groq platform
+- Advanced reasoning for item extraction and response formatting
+- Generous free tier
+- Access to OpenAI models via Groq
 
 ### Step 3.2: Query Classification ✅ UPDATED
 **Choice**: Direct item extraction from natural language
@@ -96,7 +96,7 @@ requests>=2.32.5
 - Simple and efficient processing
 
 ### Step 3.3: Response Generation ✅ UPDATED
-**Choice**: Natural language formatting with Gemini
+**Choice**: Natural language formatting with Groq
 - Format API data into conversational responses
 - Handle different question types naturally
 - Include vendor price, flea price, and quest info (if applicable)
@@ -310,7 +310,7 @@ Create a `.env` file in the project root:
 
 ```bash
 # .env
-GEMINI_API_KEY=your_gemini_api_key_here
+GROQ_API_KEY=your_groq_api_key_here
 DISCORD_BOT_TOKEN=your_discord_token_here  # For future use
 GOOGLE_APPLICATION_CREDENTIALS=path/to/speech_credentials.json  # For future use
 ```
@@ -341,10 +341,10 @@ If you see import errors in your IDE:
 - **No authentication required**
 - **Rate limiting**: No official limits (be reasonable)
 
-### Google Gemini
-1. Get API key from Google AI Studio
-2. Set environment variable: `export GEMINI_API_KEY=your_key`
-3. Model: `gemini-2.0-flash-lite` (free tier available)
+### Groq
+1. Get API key from Groq Console
+2. Set environment variable: `export GROQ_API_KEY=your_key`
+3. Model: `openai/gpt-oss-20b` (free tier available)
 
 ### Google Speech-to-Text (Future)
 1. Enable Google Cloud Speech-to-Text API

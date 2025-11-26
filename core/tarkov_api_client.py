@@ -1,6 +1,7 @@
 import requests
 import pickle
 import os
+import difflib
 
 CACHE_DIR = "cache"
 os.makedirs(CACHE_DIR, exist_ok=True)
@@ -44,6 +45,36 @@ def get_hideouts():
     return hideouts
 
 
+def get_all_items():
+    """Get all items with disk-cached data."""
+    cache_file = os.path.join(CACHE_DIR, "items.pkl")
+    if os.path.exists(cache_file):
+        with open(cache_file, "rb") as f:
+            return pickle.load(f)
+    query = """
+    {
+        items(lang: en, gameMode: regular) {
+            id
+            name
+            shortName
+            sellFor {
+                vendor {
+                    name
+                }
+            }
+            usedInTasks {
+              id
+            }
+        }
+    }
+    """
+    data = query_graphql(query)
+    items = data["data"]["items"]
+    with open(cache_file, "wb") as f:
+        pickle.dump(items, f)
+    return items
+
+
 def get_tasks():
     """Get tasks with disk-cached data."""
     cache_file = os.path.join(CACHE_DIR, "tasks.pkl")
@@ -83,35 +114,38 @@ def get_tasks():
 
 
 def get_item_data(name):
-    """Get item data with price, using cached quests and hideouts."""
+    """Get item data with fresh price, using cached metadata."""
+    all_items = get_all_items()
+    # Find item by name (case insensitive)
+    name_lower = name.lower()
+    matching_items = [item for item in all_items if name_lower in item["name"].lower()]
+    if not matching_items:
+        return None
+    # Prioritize items with more usedInTasks
+    matching_items.sort(key=lambda x: len(x.get("usedInTasks", [])), reverse=True)
+    item = matching_items[0]
+    item_id = item["id"]
+
+    # Query fresh price
     query = f'''{{
-        items(lang: en, name: "{name}", gameMode: regular) {{
-            id
-            name
-            shortName
+        items(ids: ["{item_id}"], lang: en, gameMode: regular) {{
             sellFor {{
                 priceRUB
                 vendor {{
                     name
                 }}
             }}
-            usedInTasks {{
-                id
-            }}
         }}
     }}'''
     data = query_graphql(query)
-    items = data["data"]["items"]
-    if not items:
+    items_data = data["data"]["items"]
+    if not items_data:
         return None
-    # Prioritize items with usedInTasks
-    items.sort(key=lambda x: len(x.get("usedInTasks", [])), reverse=True)
-    item = items[0]
-    item_id = item["id"]
+    item_data = items_data[0]
 
     # Find flea price
     flea_price = None
-    for sell in item.get("sellFor", []):
+    for sell in item_data.get("sellFor", []):
         if sell["vendor"]["name"].lower() == "flea market":
             flea_price = sell["priceRUB"]
             break

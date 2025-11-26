@@ -2,7 +2,7 @@ import click
 import json
 from core.tarkov_api_client import get_item_data
 from core.response_formatter import format_response
-from api.gemini_client import init_gemini, extract_item_name
+from api.groq_client import init_groq, extract_item_name
 
 
 @click.group()
@@ -17,7 +17,7 @@ def cli():
 def ask(question, debug):
     """Ask a question about a Tarkov item."""
     click.echo(f"Query: {question}")
-    model = init_gemini()
+    model = init_groq()
     item_name = extract_item_name(model, question)
     click.echo(f"Extracted item: {item_name}")
     data = get_item_data(item_name)
@@ -55,18 +55,24 @@ def ask(question, debug):
 @cli.command()
 @click.option("--debug", is_flag=True, help="Output structured JSON data")
 def test(debug):
-    """Run automated tests on sample items."""
-    test_items = [
-        "Glock 17",  # Not needed for any quests
-        "MRE",  # Needed for quests but not FIR
-        "MP-133",  # Needed for quests but not FIR
-        "Cat figurine",  # Needed for quests with FIR
-        "Augmentin antibiotic pills",  # Needed for quests with FIR
+    """Run automated tests on sample queries."""
+    test_queries = [
+        "Do I need Glock 17?",  # Not needed for any quests
+        "How much is MRE?",  # Needed for quests but not FIR
+        "Do I need MP-133?",  # Needed for quests but not FIR
+        "How much is cat figurine?",  # Needed for quests with FIR
+        "Do I need Augmentin antibiotic pills?",  # Needed for quests with FIR
     ]
 
-    for item in test_items:
-        click.echo(f"\n--- Testing: {item} ---")
-        data = get_item_data(item)
+    for query in test_queries:
+        click.echo(f"\n--- Testing: {query} ---")
+        model = init_groq()
+        item_name = extract_item_name(model, query)
+        click.echo(f"Extracted item: {item_name}")
+        if not item_name:
+            click.echo("No item extracted.")
+            continue
+        data = get_item_data(item_name)
         if debug:
             if not data:
                 click.echo("Item not found.")
@@ -94,7 +100,7 @@ def test(debug):
             }
             click.echo(json.dumps(result, indent=2))
         else:
-            response = format_response(data, item)
+            response = format_response(data, item_name)
             click.echo(f"Response: {response}")
 
     click.echo("\n--- Test completed ---")

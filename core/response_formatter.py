@@ -1,9 +1,9 @@
 import json
-from api.gemini_client import init_gemini, generate_response
+from api.groq_client import init_groq, generate_response
 
 
 def format_response(data, query_name):
-    """Format item data into a concise factual response using Gemini."""
+    """Format item data into a concise factual response using Groq."""
     if not data:
         return "Item not found."
 
@@ -16,7 +16,6 @@ def format_response(data, query_name):
     }
 
     data_json = json.dumps(structured)
-    prompt = f"Format this Tarkov item data into a concise, factual response using only the provided information. Use the item_name as provided. Present it naturally but briefly: {data_json}"
 
-    model = init_gemini()
-    return generate_response(model, prompt)
+    model = init_groq()
+    return generate_response(model, data_json)
