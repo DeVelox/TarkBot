@@ -3,8 +3,9 @@ import json
 import sys
 import os
 import tomllib
-from core.tarkov_api_client import get_item_data
+from api.tarkov_api_client import get_item_data
 from core.response_formatter import format_response
+from interfaces.voice_interface import get_voice_input, synthesize_speech
 from api.groq_client import init_groq, extract_item_name
 
 
@@ -98,10 +99,10 @@ def cli(ctx):
 @click.option("--debug", is_flag=True, help="Output structured JSON data")
 def ask(question, voice, debug):
     """Ask a question about a Tarkov item."""
-    from core.voice_interface import synthesize_speech
+    from interfaces.voice_interface import synthesize_speech
 
     if voice:
-        from core.voice_interface import get_voice_input
+        from interfaces.voice_interface import get_voice_input
 
         while True:
             # Wait for tilde key press
