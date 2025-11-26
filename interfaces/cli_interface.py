@@ -9,82 +9,41 @@ from api.groq_client import init_groq, extract_item_name
 
 
 def wait_for_tilde():
-    """Wait for tilde key press in a cross-platform way."""
-    if os.name == "nt":  # Windows - use input for focus-independent operation
-        while True:
-            try:
-                response = input("Press '~' to speak, or 'q' to quit: ").strip().lower()
-                if response in ["`", "~", "tilde", "speak"]:
-                    return True
-                elif response in ["q", "quit", "exit"]:
-                    return False
-            except (KeyboardInterrupt, EOFError):
-                return False
-    else:
-        # Unix-like systems (Linux, macOS) - try raw input first, fallback to input
-        click.echo("Press '~' to speak, or 'q' to quit...")
-        try:
-            import termios
-            import tty
+    """Wait for Ctrl+` to speak or Ctrl+Q to quit using pynput."""
+    from pynput import keyboard
 
-            fd = sys.stdin.fileno()
-            old_settings = termios.tcgetattr(fd)
+    click.echo("Press 'Ctrl+`' to speak, or 'Ctrl+Q' to quit...")
 
-            try:
-                tty.setraw(fd)
-                while True:
-                    char = sys.stdin.read(1)
-                    if char == "`" or char == "~":
-                        return True
-                    elif char.lower() == "q":
-                        return False
-            finally:
-                termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+    speak_pressed = False
+    quit_pressed = False
 
-        except ImportError:
-            pass
+    def on_speak():
+        nonlocal speak_pressed
+        speak_pressed = True
+        hotkeys.stop()
 
-    # Fallback for any system that doesn't support raw input
-    while True:
-        try:
-            response = input("Press '~' to speak, or 'q' to quit: ").strip().lower()
-            if response in ["`", "~", "tilde", "speak"]:
-                return True
-            elif response in ["q", "quit", "exit"]:
-                return False
-        except (KeyboardInterrupt, EOFError):
-            return False
+    def on_quit():
+        nonlocal quit_pressed
+        quit_pressed = True
+        hotkeys.stop()
+
+    hotkeys = keyboard.GlobalHotKeys({"<ctrl>+`": on_speak, "<ctrl>+q": on_quit})
+
+    hotkeys.start()
+
     try:
-        import termios
-        import tty
-
-        fd = sys.stdin.fileno()
-        old_settings = termios.tcgetattr(fd)
-
-        try:
-            tty.setraw(fd)
-            while True:
-                char = sys.stdin.read(1)
-                if char == "`" or char == "~":
-                    return True
-                elif char.lower() == "q":
-                    return False
-        finally:
-            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
-
-    except ImportError:
-        pass
-
-    # Fallback: use input with prompt
-    while True:
-        try:
-            response = input("Press '~' to speak, or 'q' to quit: ").strip().lower()
-            if response in ["`", "~", "tilde", "speak"]:
-                return True
-            elif response in ["q", "quit", "exit"]:
-                return False
-        except (KeyboardInterrupt, EOFError):
+        hotkeys.join()
+        if speak_pressed:
+            return True
+        elif quit_pressed:
             return False
+        else:
+            return False
+    except KeyboardInterrupt:
+        hotkeys.stop()
+        return False
+    else:
+        return False
 
 
 @click.group()
