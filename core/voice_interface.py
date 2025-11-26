@@ -8,16 +8,18 @@ import numpy as np
 import sounddevice as sd
 import soundfile as sf
 from groq import Groq
+import re
+from num2words import num2words
+import re
+from num2words import num2words
 
 
 def record_audio(duration=5, sample_rate=16000):
     """Record audio from microphone for specified duration."""
-    print(f"Recording for {duration} seconds...")
     audio_data = sd.rec(
         int(duration * sample_rate), samplerate=sample_rate, channels=1, dtype="int16"
     )
     sd.wait()
-    print("Recording finished.")
     return audio_data.flatten(), sample_rate
 
 
@@ -43,7 +45,7 @@ def transcribe_audio(audio_data, sample_rate):
                 response_format="text",
             )
 
-        return transcription.strip()
+        return str(transcription).strip()
 
     finally:
         # Clean up temp file
@@ -51,13 +53,32 @@ def transcribe_audio(audio_data, sample_rate):
             os.remove(temp_file)
 
 
+def convert_numbers_to_words(text):
+    """Convert numbers in text to words for better TTS pronunciation."""
+
+    def replace_number(match):
+        number = int(match.group().replace(",", ""))
+        return num2words(number)
+
+    # Handle all numbers, including those with commas
+    text = re.sub(r"\b\d{1,3}(?:,\d{3})*\b", replace_number, text)
+
+    return text
+
+
 def synthesize_speech(text):
-    """Synthesize speech using Groq TTS."""
+    """Synthesize speech using Groq TTS with number-to-text conversion."""
     client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+
+    # Convert numbers to words for better pronunciation
+    processed_text = convert_numbers_to_words(text)
 
     temp_file = "temp_speech.wav"
     response = client.audio.speech.create(
-        model="playai-tts", voice="Basil-PlayAI", input=text, response_format="wav"
+        model="playai-tts",
+        voice="Basil-PlayAI",
+        input=processed_text,
+        response_format="wav",
     )
 
     response.write_to_file(temp_file)
@@ -69,6 +90,12 @@ def synthesize_speech(text):
     os.remove(temp_file)
 
 
+def synthesize_speech_with_original_text(text):
+    """Synthesize speech with number conversion, but return original text for display."""
+    synthesize_speech(text)
+    return text
+
+
 def play_audio_file(filename):
     """Play audio file using sounddevice."""
     data, samplerate = sf.read(filename)
@@ -76,8 +103,8 @@ def play_audio_file(filename):
     sd.wait()
 
 
-def get_voice_input():
+def get_voice_input(duration=5):
     """Record and transcribe voice input."""
-    audio_data, sample_rate = record_audio()
+    audio_data, sample_rate = record_audio(duration=duration)
     text = transcribe_audio(audio_data, sample_rate)
     return text
